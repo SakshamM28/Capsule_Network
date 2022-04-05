@@ -12,6 +12,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.utils.data
 
+import torch.nn as nn
+
+from prettytable import PrettyTable
+
 class Squash():
     
     # Use if any parameter required like epsilon
@@ -28,10 +32,12 @@ class Squash():
         
         return (s2 / (1 + s2)) * (s / torch.sqrt(s2))
     
-class Routing():
+class Routing(nn.Module):
     
     def __init__(self, in_caps: int, out_caps: int, in_d: int, out_d: int, iterations: int):
         
+        super(Routing,self).__init__()
+
         self.in_caps = in_caps
         self.out_caps = out_caps
         self.iterations = iterations
@@ -81,3 +87,18 @@ class MarginLoss():
         loss = labels * F.relu(self.m_positive - v_norm) + self.lambda_ * (1.0 - labels) * F.relu(v_norm - self.m_negative)
             
         return loss.sum(dim=-1).sum()
+
+class Helper():
+
+
+    def count_parameters(model):
+        table = PrettyTable(["Modules", "Parameters"])
+        total_params = 0
+        for name, parameter in model.named_parameters():
+            if not parameter.requires_grad: continue
+            params = parameter.numel()
+            table.add_row([name, params])
+            total_params+=params
+        print(table)
+        print(f"Total Trainable Params: {total_params}")
+        return total_params

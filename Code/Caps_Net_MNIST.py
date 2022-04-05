@@ -5,6 +5,8 @@ Created on Mon Apr  4 14:27:08 2022
 
 @author: saksham
 """
+
+import sys
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -12,7 +14,7 @@ import torch.optim as optim
 import torch.utils.data
 from torchvision import datasets, transforms
 
-from Modules import Squash, Routing, MarginLoss
+from Modules import Squash, Routing, MarginLoss, Helper
 
 class MNISTCapsuleNetworkModel(nn.Module):
     
@@ -78,8 +80,8 @@ if __name__ == '__main__':
         dev = "cpu"
 
     # Control variables
-    batch_size = 256
-    num_epochs = 1
+    batch_size = int(sys.argv[1])
+    num_epochs = int(sys.argv[2])
     learning_rate = 1e-3
 
     # Set up the data loader
@@ -99,9 +101,13 @@ if __name__ == '__main__':
                        ])),
         batch_size=batch_size)
 
+    print("Training dataset size: ", train_loader.dataset.data.size(0))
+    print("Test dataset size: ", test_loader.dataset.data.size(0))
+
     # Set up the network and optimizer
     network = MNISTCapsuleNetworkModel()
     network.to(torch.device(dev))
+    print(Helper.count_parameters(network))
     optimizer = optim.Adam(network.parameters(), lr=learning_rate)
 
     # Train the network
