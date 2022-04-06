@@ -14,6 +14,8 @@ import torch.optim as optim
 import torch.utils.data
 from torchvision import datasets, transforms
 
+from torch.utils.tensorboard import SummaryWriter
+
 from Modules import Squash, Routing, MarginLoss, Helper
 
 class MNISTCapsuleNetworkModel(nn.Module):
@@ -84,6 +86,9 @@ if __name__ == '__main__':
     num_epochs = int(sys.argv[2])
     learning_rate = 1e-3
 
+    # Tensorboard
+    writer = SummaryWriter('runs/capsule_mnist_experiment_1')
+
     # Set up the data loader
     train_loader = torch.utils.data.DataLoader(
         datasets.MNIST('./Data/mnist/', train=True, download=True,
@@ -112,6 +117,11 @@ if __name__ == '__main__':
 
     # Train the network
     for epoch in range(num_epochs):
+
+        train_running_loss = 0.0
+        test_running_loss = 0.0
+
+        network.train()
         for batch_idx, (data, target) in enumerate(train_loader):
             
             data = data.to(torch.device(dev))
@@ -131,10 +141,39 @@ if __name__ == '__main__':
 
             # Show the loss
             print('Epoch:', '{:3d}'.format(epoch + 1),
-                  '\tBatch:', '{:3d}'.format(batch_idx + 1),
-                  '\tLoss:', '{:10.5f}'.format(loss.item()/ data.size(0)))
+                  '\tTraining Batch:', '{:3d}'.format(batch_idx + 1),
+                  '\tTraining Loss:', '{:10.5f}'.format(loss.item()/ data.size(0)))
+
+            train_running_loss += loss.item()
+
+        # epoch loss
+        epoch_loss = train_running_loss / train_loader.dataset.data.size(0)
+        # ...log the training loss
+        writer.add_scalar('training epoch loss', epoch_loss, (epoch+1))
+
+        ## For every epoch calculate validation/testing loss
+        network.eval()
+        for batch_idx, (data, target) in enumerate(test_loader):
             
+            data = data.to(torch.device(dev))
+            target = target.to(torch.device(dev))
+
+            caps, reconstructions, preds = network.forward(data)
+
+            batch_loss = network.cost(caps, target, reconstructions, data, True)
+            print('Epoch:', '{:3d}'.format(epoch + 1),
+                  '\tTesting Batch:', '{:3d}'.format(batch_idx + 1),
+                  '\tTesting Loss:', '{:10.5f}'.format(batch_loss.item()/ data.size(0)))
+
+            test_running_loss += batch_loss.item()
+
+        # epoch loss
+        epoch_loss = test_running_loss / test_loader.dataset.data.size(0)
+        # ...log the evaluation loss
+        writer.add_scalar('evaluation epoch loss', epoch_loss, (epoch+1))
+
     
+    network.eval()
     # Compute accuracy on training set
     count = 0
     for batch_idx, (data, target) in enumerate(train_loader):
@@ -157,7 +196,6 @@ if __name__ == '__main__':
         caps, reconstructions, preds = network.forward(data)
         count += torch.sum(preds == target).detach().item()
         
-        # TODO check this loss
         batch_loss = network.cost(caps, target, reconstructions, data, True)
         print('Test Batch Loss:', batch_loss.item()/ data.size(0) )
         running_loss += batch_loss.item()
@@ -166,6 +204,14 @@ if __name__ == '__main__':
 
     print('Test Accuracy:', float(count) / test_loader.dataset.data.size(0))
     print('Test Loss:', total_loss_wr)
+
+
+    writer.flush()
+    writer.close()
+
+
+    # Saving the model
+    torch.save(network, "caps_net_mnist.pt")
     
     
     
