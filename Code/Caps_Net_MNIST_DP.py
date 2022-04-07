@@ -12,14 +12,15 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import torch.utils.data
-from torchvision import datasets, transforms
+
+from torch.nn.parallel import DistributedDataParallel as DDP
 
 from torch.utils.tensorboard import SummaryWriter
 
-from Modules import Squash, Routing, MarginLoss, Helper
+from Modules import Squash, Routing, Helper, DataParallel
 
 class MNISTCapsuleNetworkModel(nn.Module):
-    
+    #TODO take dynamic parameters for routing, input size etc
     def __init__(self):
         super(MNISTCapsuleNetworkModel, self).__init__()
         
@@ -41,9 +42,6 @@ class MNISTCapsuleNetworkModel(nn.Module):
             nn.Sigmoid()
         )
         
-        self.margin_loss = MarginLoss(n_labels=10)
-        self.reconstruction_loss = nn.MSELoss(reduction='sum')
-        
     def forward(self, data: torch.Tensor):
         
         x = F.relu(self.conv1(data))
@@ -64,56 +62,32 @@ class MNISTCapsuleNetworkModel(nn.Module):
         
         return caps, reconstructions, pred
     
-    def cost(self, caps: torch.Tensor, targets: torch.Tensor, reconstructions: torch.Tensor, data: torch.Tensor, isReconstruction = False) -> torch.Tensor:
-        
-        margin_loss = self.margin_loss.calculate(caps, targets)
-        if isReconstruction == True:
-            return  margin_loss + 0.0005 * self.reconstruction_loss(reconstructions, data)
-        
-        return margin_loss
+def main(rank, world_size, batch_size, num_epochs, learning_rate, model_path):
     
-    
-if __name__ == '__main__':
+    print(rank, world_size, batch_size, num_epochs, learning_rate, model_path)
     
     helper = Helper()
-    
-    if torch.cuda.is_available():
-        print("GPU available")
-        dev = "cuda"
-    else:
-        dev = "cpu"
-
-    # Control variables
-    batch_size = int(sys.argv[1])
-    num_epochs = int(sys.argv[2])
-    learning_rate = 1e-3
 
     # Tensorboard
     writer = SummaryWriter('runs/capsule_mnist_experiment_1')
 
+    # Data Parallelism for Multiple GPU
+    dataParallel = DataParallel()
+    # setup the process groups
+    dataParallel.setup(rank, world_size)
     # Set up the data loader
-    train_loader = torch.utils.data.DataLoader(
-        datasets.MNIST('./Data/mnist/', train=True, download=True,
-                       transform=transforms.Compose([
-                           transforms.ToTensor(),
-                           transforms.Normalize((0.1307,), (0.3081,))
-                       ])),
-        batch_size=batch_size)
+    train_loader = dataParallel.prepare(True, rank, world_size, batch_size)
 
-    test_loader = torch.utils.data.DataLoader(
-        datasets.MNIST('./Data/mnist', train=False,
-                       transform=transforms.Compose([
-                           transforms.ToTensor(),
-                           transforms.Normalize((0.1307,), (0.3081,))
-                       ])),
-        batch_size=batch_size)
-
+    test_loader = dataParallel.prepare(False, rank, world_size, batch_size)
+    
     print("Training dataset size: ", train_loader.dataset.data.size(0))
     print("Test dataset size: ", test_loader.dataset.data.size(0))
 
     # Set up the network and optimizer
     network = MNISTCapsuleNetworkModel()
-    network.to(torch.device(dev))
+    network.to(rank)
+    network= DDP(network, device_ids=[rank], output_device=rank, find_unused_parameters=True)
+
     print(helper.count_parameters(network))
     optimizer = optim.Adam(network.parameters(), lr=learning_rate)
 
@@ -122,19 +96,22 @@ if __name__ == '__main__':
 
         train_running_loss = 0.0
         test_running_loss = 0.0
+        
+        train_loader.sampler.set_epoch(epoch)
+        test_loader.sampler.set_epoch(epoch)
 
         network.train()
         for batch_idx, (data, target) in enumerate(train_loader):
             
-            data = data.to(torch.device(dev))
-            target = target.to(torch.device(dev))
+            data = data.to(rank)
+            target = target.to(rank)
 
             # Get the predictions
             caps, reconstructions, preds = network.forward(data)
             print(preds.shape)
 
             # Compute the loss
-            loss = network.cost(caps, target, reconstructions, data, True)
+            loss = helper.cost(caps, target, reconstructions, data, True)
 
             # Take a gradient step
             optimizer.zero_grad()
@@ -150,19 +127,19 @@ if __name__ == '__main__':
 
         # epoch loss
         epoch_loss = train_running_loss / train_loader.dataset.data.size(0)
-        # ...log the training loss
+        # log the training loss
         writer.add_scalar('training epoch loss', epoch_loss, (epoch+1))
 
         ## For every epoch calculate validation/testing loss
         network.eval()
         for batch_idx, (data, target) in enumerate(test_loader):
             
-            data = data.to(torch.device(dev))
-            target = target.to(torch.device(dev))
+            data = data.to(rank)
+            target = target.to(rank)
 
             caps, reconstructions, preds = network.forward(data)
 
-            batch_loss = network.cost(caps, target, reconstructions, data, True)
+            batch_loss = helper.cost(caps, target, reconstructions, data, True)
             print('Epoch:', '{:3d}'.format(epoch + 1),
                   '\tTesting Batch:', '{:3d}'.format(batch_idx + 1),
                   '\tTesting Loss:', '{:10.5f}'.format(batch_loss.item()/ data.size(0)))
@@ -171,41 +148,8 @@ if __name__ == '__main__':
 
         # epoch loss
         epoch_loss = test_running_loss / test_loader.dataset.data.size(0)
-        # ...log the evaluation loss
+        #log the evaluation loss
         writer.add_scalar('evaluation epoch loss', epoch_loss, (epoch+1))
-
-    
-    network.eval()
-    # Compute accuracy on training set
-    count = 0
-    for batch_idx, (data, target) in enumerate(train_loader):
-        
-        data = data.to(torch.device(dev))
-        target = target.to(torch.device(dev))
-        
-        _, _, preds = network.forward(data)
-        count += torch.sum(preds == target).detach().item()
-    print('Training Accuracy:', float(count) / train_loader.dataset.data.size(0))
-
-    # Compute accuracy on test set
-    count = 0
-    running_loss = 0.0
-    for batch_idx, (data, target) in enumerate(test_loader):
-        
-        data = data.to(torch.device(dev))
-        target = target.to(torch.device(dev))
-        
-        caps, reconstructions, preds = network.forward(data)
-        count += torch.sum(preds == target).detach().item()
-        
-        batch_loss = network.cost(caps, target, reconstructions, data, True)
-        print('Test Batch Loss:', batch_loss.item()/ data.size(0) )
-        running_loss += batch_loss.item()
-        
-    total_loss_wr = running_loss / test_loader.dataset.data.size(0)
-
-    print('Test Accuracy:', float(count) / test_loader.dataset.data.size(0))
-    print('Test Loss:', total_loss_wr)
 
 
     writer.flush()
@@ -213,8 +157,45 @@ if __name__ == '__main__':
 
 
     # Saving the model
-    torch.save(network, "caps_net_mnist_" + num_epochs +".pt")
+    torch.save(network.state_dict(), model_path)
     
+    dataParallel.cleanup()
     
+import torch.multiprocessing as mp
+from collections import OrderedDict
+import re
+if __name__ == '__main__':
     
+    # Control variables
+    batch_size = int(sys.argv[1])
+    num_epochs = int(sys.argv[2])
+    learning_rate = 1e-3
+    model_path = "caps_net_mnist_" + str(num_epochs) +".pt"
+    
+    # Put no. of GPU's used
+    world_size = 2
+    mp.spawn(
+        main,
+        args=(world_size, batch_size,num_epochs,learning_rate, model_path),
+        nprocs=world_size
+    )
+    
+    helper = Helper()
+    
+    # When using DDP, state dict add module prefix to all parameters
+    # Remove that to load model in non DDP
+    model_dict = OrderedDict()
+    pattern = re.compile('module.')
+    state_dict = torch.load(model_path)
+    for k,v in state_dict.items():
+        if re.search("module", k):
+            model_dict[re.sub(pattern, '', k)] = v
+        else:
+            model_dict = state_dict
+    
+    # Use loaded model to evaluate
+    loaded_network = MNISTCapsuleNetworkModel()
+    loaded_network.load_state_dict(model_dict)
+
+    helper.evaluate(loaded_network, batch_size)
     
