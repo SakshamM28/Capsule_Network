@@ -13,6 +13,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 import torch.utils.data
 from torchvision import datasets, transforms
+import torchvision.utils as tvutils
 
 from torch.utils.tensorboard import SummaryWriter
 
@@ -151,6 +152,11 @@ if __name__ == '__main__':
         # ...log the training loss
         writer.add_scalar('training epoch loss', epoch_loss, (epoch+1))
 
+        # visualize training image reconstruction
+        grid = tvutils.make_grid(reconstructions)
+        writer.add_image('train_images', grid, epoch+1)
+
+
         ## For every epoch calculate validation/testing loss
         network.eval()
         for batch_idx, (data, target) in enumerate(test_loader):
@@ -171,6 +177,10 @@ if __name__ == '__main__':
         epoch_loss = test_running_loss / test_loader.dataset.data.size(0)
         # ...log the evaluation loss
         writer.add_scalar('evaluation epoch loss', epoch_loss, (epoch+1))
+
+        # visualize validation image reconstruction
+        grid = tvutils.make_grid(reconstructions)
+        writer.add_image('val_images', grid, epoch + 1)
 
     
     network.eval()
