@@ -155,7 +155,7 @@ if __name__ == '__main__':
         epoch_loss = train_running_loss / train_loader.dataset.data.size(0)
         # ...log the training loss, lr
         writer.add_scalar('training epoch loss', epoch_loss, (epoch+1))
-        writer.add_scalar('learning rate', lr_scheduler.get_lr(), (epoch + 1))
+        writer.add_scalar('learning rate', lr_scheduler.get_last_lr(), (epoch + 1))
 
         # visualize training image reconstruction
         grid = tvutils.make_grid(reconstructions)
