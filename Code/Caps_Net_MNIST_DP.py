@@ -17,7 +17,7 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 
 from torch.utils.tensorboard import SummaryWriter
 
-from Modules import Squash, Routing, Helper, DataParallel
+from Modules import Squash, Routing, Helper, DataParallel, DatasetHelper
 
 class MNISTCapsuleNetworkModel(nn.Module):
     #TODO take dynamic parameters for routing, input size etc
@@ -69,7 +69,7 @@ def main(rank, world_size, batch_size, num_epochs, learning_rate, model_path):
     helper = Helper()
 
     # Tensorboard
-    writer = SummaryWriter('runs/capsule_mnist_experiment_1')
+    writer = SummaryWriter('runs/capsule_mnist_experiment_' + str(num_epochs))
 
     # Data Parallelism for Multiple GPU
     dataParallel = DataParallel()
@@ -78,7 +78,8 @@ def main(rank, world_size, batch_size, num_epochs, learning_rate, model_path):
     # Set up the data loader
     train_loader = dataParallel.prepare(True, rank, world_size, batch_size)
 
-    test_loader = dataParallel.prepare(False, rank, world_size, batch_size)
+    ## Load Full Test data for evaluation
+    test_loader = torch.utils.data.DataLoader(DatasetHelper.getDataSet(False), batch_size=batch_size)
     
     print("Training dataset size: ", train_loader.dataset.data.size(0))
     print("Test dataset size: ", test_loader.dataset.data.size(0))
@@ -90,25 +91,24 @@ def main(rank, world_size, batch_size, num_epochs, learning_rate, model_path):
 
     print(helper.count_parameters(network))
     optimizer = optim.Adam(network.parameters(), lr=learning_rate)
-
+    lr_scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.96)
+    
+    train_acc_l = []
+    test_acc_l = []
     # Train the network
     for epoch in range(num_epochs):
-
-        train_running_loss = 0.0
-        test_running_loss = 0.0
         
         train_loader.sampler.set_epoch(epoch)
-        test_loader.sampler.set_epoch(epoch)
 
         network.train()
         for batch_idx, (data, target) in enumerate(train_loader):
-            
+
             data = data.to(rank)
             target = target.to(rank)
 
             # Get the predictions
             caps, reconstructions, preds = network.forward(data)
-            print(preds.shape)
+            #print(preds.shape)
 
             # Compute the loss
             loss = helper.cost(caps, target, reconstructions, data, True)
@@ -118,44 +118,39 @@ def main(rank, world_size, batch_size, num_epochs, learning_rate, model_path):
             loss.backward()
             optimizer.step()
 
-            # Show the loss
-            print('Epoch:', '{:3d}'.format(epoch + 1),
-                  '\tTraining Batch:', '{:3d}'.format(batch_idx + 1),
-                  '\tTraining Loss:', '{:10.5f}'.format(loss.item()/ data.size(0)))
+        # LR decay
+        lr_scheduler.step()
+        
+        # Calculate accuracies on whole dataset
+        train_accuracy, test_accuracy, train_loss, test_loss= helper.evaluate(network, epoch, batch_size, writer, rank)
+        
+        print('Epoch:', '{:3d}'.format(epoch + 1),
+              '\tTraining Accuracy:', '{:10.5f}'.format(train_accuracy),
+              '\tTraining Loss:', '{:10.5f}'.format(train_loss),
+              '\tTesting Accuracy:', '{:10.5f}'.format(test_accuracy),
+              '\tTesting Loss:', '{:10.5f}'.format(test_loss))
 
-            train_running_loss += loss.item()
-
-        # epoch loss
-        epoch_loss = train_running_loss / train_loader.dataset.data.size(0)
+        # Log LR
+        writer.add_scalar('learning rate', lr_scheduler.get_last_lr()[0], (epoch + 1))
         # log the training loss
-        writer.add_scalar('training epoch loss', epoch_loss, (epoch+1))
-
-        ## For every epoch calculate validation/testing loss
-        network.eval()
-        for batch_idx, (data, target) in enumerate(test_loader):
-            
-            data = data.to(rank)
-            target = target.to(rank)
-
-            caps, reconstructions, preds = network.forward(data)
-
-            batch_loss = helper.cost(caps, target, reconstructions, data, True)
-            print('Epoch:', '{:3d}'.format(epoch + 1),
-                  '\tTesting Batch:', '{:3d}'.format(batch_idx + 1),
-                  '\tTesting Loss:', '{:10.5f}'.format(batch_loss.item()/ data.size(0)))
-
-            test_running_loss += batch_loss.item()
-
-        # epoch loss
-        epoch_loss = test_running_loss / test_loader.dataset.data.size(0)
-        #log the evaluation loss
-        writer.add_scalar('evaluation epoch loss', epoch_loss, (epoch+1))
+        writer.add_scalar('training epoch loss', train_loss, (epoch+1))
+        # log the evaluation loss
+        writer.add_scalar('evaluation epoch loss', test_loss, (epoch+1))
+        # log accuracies
+        writer.add_scalar('Training epoch Accuracy', train_accuracy, (epoch+1))
+        writer.add_scalar('Testing epoch Accuracy', test_accuracy, (epoch+1))
+        
+        train_acc_l.append(train_accuracy)
+        test_acc_l.append(test_accuracy)
 
 
     writer.flush()
     writer.close()
 
 
+    # Display Max Accuracy
+    print(" Max Train Accuracy : ", max(train_acc_l))
+    print(" Max Test Accuracy : ", max(test_acc_l))
     # Saving the model
     torch.save(network.state_dict(), model_path)
     
@@ -179,7 +174,7 @@ if __name__ == '__main__':
         args=(world_size, batch_size,num_epochs,learning_rate, model_path),
         nprocs=world_size
     )
-    
+    '''
     helper = Helper()
     
     # When using DDP, state dict add module prefix to all parameters
@@ -198,4 +193,5 @@ if __name__ == '__main__':
     loaded_network.load_state_dict(model_dict)
 
     helper.evaluate(loaded_network, batch_size)
+    '''
     

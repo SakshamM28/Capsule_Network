@@ -16,6 +16,7 @@ import torch.utils.data
 from torchvision import datasets, transforms
 import torch.distributed as dist
 from torch.utils.data.distributed import DistributedSampler
+import torchvision.utils as tvutils
 
 from prettytable import PrettyTable
 
@@ -104,7 +105,7 @@ class DataParallel():
     def setup(self, rank, world_size):
         os.environ['MASTER_ADDR'] = 'localhost'
         os.environ['MASTER_PORT'] = '12355'
-        dist.init_process_group("nccl", rank=rank, world_size=world_size)
+        dist.init_process_group(backend="nccl", rank=rank, world_size=world_size)
         
     def prepare(self, isTrain, rank, world_size, batch_size=128, pin_memory=False, num_workers=0):
         dataset = DatasetHelper.getDataSet(isTrain)
@@ -146,46 +147,70 @@ class Helper():
         
         return margin_loss
     
-    def evaluate(self, network, batch_size):
+    def evaluate(self, network, epoch, batch_size,writer,rank=None):
         
-        if torch.cuda.is_available():
+        if rank:
+            dev = rank
+        elif torch.cuda.is_available():
             print("GPU available")
-            dev = "cuda"
+            dev = torch.device("cuda")
         else:
-            dev = "cpu"
+            dev = torch.device("cpu")
         
         train_loader = torch.utils.data.DataLoader(DatasetHelper.getDataSet(True), batch_size=batch_size)
         test_loader = torch.utils.data.DataLoader(DatasetHelper.getDataSet(False), batch_size=batch_size)
         
-        network.to(torch.device(dev))
+        network.to(dev)
         network.eval()
         # Compute accuracy on training set
         count = 0
+        train_running_loss = 0.0
         for batch_idx, (data, target) in enumerate(train_loader):
             
-            data = data.to(torch.device(dev))
-            target = target.to(torch.device(dev))
-            
-            _, _, preds = network.forward(data)
-            count += torch.sum(preds == target).detach().item()
-        print('Training Accuracy:', float(count) / train_loader.dataset.data.size(0))
-
-        # Compute accuracy on test set
-        count = 0
-        running_loss = 0.0
-        for batch_idx, (data, target) in enumerate(test_loader):
-            
-            data = data.to(torch.device(dev))
-            target = target.to(torch.device(dev))
+            data = data.to(dev)
+            target = target.to(dev)
             
             caps, reconstructions, preds = network.forward(data)
             count += torch.sum(preds == target).detach().item()
             
             batch_loss = self.cost(caps, target, reconstructions, data, True)
-            print('Test Batch Loss:', batch_loss.item()/ data.size(0) )
-            running_loss += batch_loss.item()
             
-        total_loss_wr = running_loss / test_loader.dataset.data.size(0)
+            train_running_loss += batch_loss.item()
+            
+            # Logging reconstructed images
+            grid = tvutils.make_grid(reconstructions)
+            writer.add_image('train_images', grid, (epoch+1))
 
-        print('Test Accuracy:', float(count) / test_loader.dataset.data.size(0))
-        print('Test Loss:', total_loss_wr)
+        train_loss = train_running_loss / train_loader.dataset.data.size(0)
+            
+        train_accuracy = float(count) / train_loader.dataset.data.size(0)
+
+        # Compute accuracy on test set
+        count = 0
+        test_running_loss = 0.0
+        
+        with torch.no_grad():
+            for batch_idx, (data, target) in enumerate(test_loader):
+                
+                data = data.to(dev)
+                target = target.to(dev)
+                
+                caps, reconstructions, preds = network.forward(data)
+                count += torch.sum(preds == target).detach().item()
+                
+                batch_loss = self.cost(caps, target, reconstructions, data, True)
+                #print('Test Batch Loss:', batch_loss.item()/ data.size(0) )
+                test_running_loss += batch_loss.item()
+                
+                grid = tvutils.make_grid(reconstructions)
+                writer.add_image('test_images', grid, (epoch+1))
+            
+        test_loss = test_running_loss / test_loader.dataset.data.size(0)
+
+        test_accuracy = float(count) / test_loader.dataset.data.size(0)
+        print('Test Accuracy:', test_accuracy)
+        print('Test Loss:', test_loss)
+        
+        return train_accuracy, test_accuracy, train_loss, test_loss
+        
+        
