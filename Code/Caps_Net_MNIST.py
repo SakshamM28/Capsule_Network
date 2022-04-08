@@ -115,6 +115,7 @@ if __name__ == '__main__':
     network.to(torch.device(dev))
     print(Helper.count_parameters(network))
     optimizer = optim.Adam(network.parameters(), lr=learning_rate)
+    lr_scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.96)
 
     # Train the network
     for epoch in range(num_epochs):
@@ -147,10 +148,14 @@ if __name__ == '__main__':
 
             train_running_loss += loss.item()
 
+        # LR decay
+        lr_scheduler.step()
+
         # epoch loss
         epoch_loss = train_running_loss / train_loader.dataset.data.size(0)
-        # ...log the training loss
+        # ...log the training loss, lr
         writer.add_scalar('training epoch loss', epoch_loss, (epoch+1))
+        writer.add_scalar('learning rate', lr_scheduler.get_lr(), (epoch + 1))
 
         # visualize training image reconstruction
         grid = tvutils.make_grid(reconstructions)
