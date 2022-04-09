@@ -62,14 +62,14 @@ class MNISTCapsuleNetworkModel(nn.Module):
         
         return caps, reconstructions, pred
     
-def main(rank, world_size, batch_size, num_epochs, learning_rate, model_path):
+def main(rank, world_size, batch_size, num_epochs, learning_rate, model_path, num_exp):
     
-    print(rank, world_size, batch_size, num_epochs, learning_rate, model_path)
+    print(rank, world_size, batch_size, num_epochs, learning_rate, model_path, num_exp)
     
     helper = Helper()
 
     # Tensorboard
-    writer = SummaryWriter('runs/capsule_mnist_experiment_' + str(num_epochs))
+    writer = SummaryWriter('runs/capsule_mnist_experiment_' + str(num_epochs) + "_" + str(num_exp))
 
     # Data Parallelism for Multiple GPU
     dataParallel = DataParallel()
@@ -151,6 +151,8 @@ def main(rank, world_size, batch_size, num_epochs, learning_rate, model_path):
     # Display Max Accuracy
     print(" Max Train Accuracy : ", max(train_acc_l))
     print(" Max Test Accuracy : ", max(test_acc_l))
+    
+    # TODO save model with best Test accuracy
     # Saving the model
     torch.save(network.state_dict(), model_path)
     
@@ -165,13 +167,14 @@ if __name__ == '__main__':
     batch_size = int(sys.argv[1])
     num_epochs = int(sys.argv[2])
     learning_rate = 1e-3
+    num_exp = int(sys.argv[3])
     model_path = "caps_net_mnist_" + str(num_epochs) +".pt"
     
     # Put no. of GPU's used
     world_size = 2
     mp.spawn(
         main,
-        args=(world_size, batch_size,num_epochs,learning_rate, model_path),
+        args=(world_size, batch_size,num_epochs,learning_rate, model_path, num_exp),
         nprocs=world_size
     )
     '''

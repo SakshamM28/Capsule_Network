@@ -22,14 +22,14 @@ from prettytable import PrettyTable
 
 class Squash():
     
-    # Use if any parameter required like epsilon
-    ##def __init__():
-    #TODO Use some epsillon in divison and check performance
+    def __init__(self, epsilon=1e-8):
+        self.epsilon = epsilon
     def perform(self, s: torch.Tensor):
         
         s2 = (s ** 2).sum(dim=-1, keepdims=True)
         
-        return (s2 / (1 + s2)) * (s / torch.sqrt(s2))
+        # Adding epsilon in case s2 become 0
+        return (s2 / (1 + s2)) * (s / torch.sqrt(s2 + self.epsilon))
     
 class Routing(nn.Module):
     
