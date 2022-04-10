@@ -158,7 +158,7 @@ def main(rank, world_size, batch_size, num_epochs, learning_rate, model_path, nu
     # Display Max Accuracy
     print(" Max Train Accuracy : ", max(train_acc_l))
     print(" Max Test Accuracy : ", max(test_acc_l))
-    print(" Best Test Accuracy epoch: ", max(best_epoch))
+    print(" Best Test Accuracy epoch: ", best_epoch )
     
     
     dataParallel.cleanup()

@@ -178,7 +178,7 @@ def main(rank, world_size, batch_size, num_epochs, learning_rate, model_path, nu
     # Display Max Accuracy
     print(" Max Train Accuracy : ", max(train_acc_l))
     print(" Max Test Accuracy : ", max(test_acc_l))
-    print(" Best Test Accuracy epoch: ", max(best_epoch))
+    print(" Best Test Accuracy epoch: ", best_epoch)
     
     
     dataParallel.cleanup()
@@ -191,7 +191,7 @@ if __name__ == '__main__':
     num_epochs = int(sys.argv[2])
     learning_rate = 1e-3
     num_exp = int(sys.argv[3])
-    model_path = "saved_model/shifted_mnist_250_e/caps_net_shifted_mnist_" + str(num_epochs) + "_"
+    model_path = "saved_model/shifted_mnist_30_e/caps_net_shifted_mnist_" + str(num_epochs) + "_"
     
     # Put no. of GPU's used
     world_size = 2
