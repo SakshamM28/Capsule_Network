@@ -116,10 +116,11 @@ def shift_write_multi_mnist(input_dataset, shift, pad, num_pairs, split='train')
             top_shifted = shift_2d(top_image, random_shifts[i, j + 1, :], shift).astype(np.uint8)
             merged = np.add(base_shifted, top_shifted, dtype=np.int32)
             merged = np.minimum(merged, 255).astype(np.uint8)
-            """ Visualization to verify
+            # Visualization to verify
+            print(base_label, top_label)
             plt.imshow(merged)
             plt.show()
-            """
+
             data_instance = {
                 'height': IMAGE_SIZE_PX + 2 * pad,
                 'width': IMAGE_SIZE_PX + 2 * pad,

@@ -107,6 +107,7 @@ if __name__ == '__main__':
     optimizer = optim.Adam(network.parameters(), lr=learning_rate)
     lr_scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.96)
 
+    test_accuracy_all = {}
     # Train the network
     for epoch in range(num_epochs):
 
@@ -150,12 +151,14 @@ if __name__ == '__main__':
 
         ## For every epoch calculate validation/testing loss
         network.eval()
+        count=0
         for batch_idx, (data, target) in enumerate(test_loader):
             
             data = data.to(torch.device(dev))
             target = target.to(torch.device(dev))
 
             preds = network.forward(data)
+            count += torch.sum(preds == target).detach().item()
 
             batch_loss = network.cost(preds, target)
             print('Epoch:', '{:3d}'.format(epoch + 1),
@@ -168,7 +171,13 @@ if __name__ == '__main__':
         epoch_loss = test_running_loss / test_loader.dataset.data.size(0)
         # ...log the evaluation loss
         writer.add_scalar('evaluation epoch loss', epoch_loss, (epoch+1))
+        writer.add_scalar('test accuracy', float(count) / test_loader.dataset.data.size(0), (epoch + 1))
+        test_accuracy_all.update(epoch+1, float(count) / test_loader.dataset.data.size(0))
 
+    print()
+    epoch_max = max(zip(test_accuracy_all.values(), test_accuracy_all.keys()))[1]
+    max_acc = max(zip(test_accuracy_all.values(), test_accuracy_all.keys()))[0]
+    print('Epoch max, Max acc.:', epoch_max, max_acc)
     
     network.eval()
     # Compute accuracy on training set
