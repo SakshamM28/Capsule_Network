@@ -122,7 +122,7 @@ if __name__ == '__main__':
                            transforms.ToTensor(),
                            transforms.Normalize((0.1307,), (0.3081,))
                        ])),
-        batch_size=batch_size)
+        batch_size=batch_size, drop_last=True, shuffle=True)
 
     test_loader = torch.utils.data.DataLoader(
         datasets.MNIST('./Data/mnist', train=False,
@@ -130,7 +130,7 @@ if __name__ == '__main__':
                            transforms.ToTensor(),
                            transforms.Normalize((0.1307,), (0.3081,))
                        ])),
-        batch_size=batch_size, drop_last=True)
+        batch_size=batch_size, drop_last=True, shuffle=True)
 
     print("Training dataset size: ", train_loader.dataset.data.size(0))
     print("Test dataset size: ", test_loader.dataset.data.size(0))
