@@ -48,7 +48,17 @@ class DatasetHelper():
     
 class Helper():
     
-    #def __init__(self):
+    def __init__(self):
+        self.loss = nn.NLLLoss()
+        
+        
+    def cost(self, predictions: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+        """
+        :param predictions: (batch_size, 10) Output predictions (log probabilities)
+        :param targets: (batch_size, 1) Target classes
+        :return cost: The negative log-likelihood loss
+        """
+        return self.loss(predictions, targets.view(-1))
 
 
     def count_parameters(self, model):
@@ -131,9 +141,10 @@ class Helper():
             target = target.to(dev)
             
             preds = network.forward(data)
-            count += torch.sum(preds == target).detach().item()
+            _, pred = torch.max(preds, dim=1)
+            count += torch.sum(pred == target).detach().item()
             
-            batch_loss = network.cost(preds, target)
+            batch_loss = self.cost(preds, target)
             
             train_running_loss += batch_loss.item()
             
@@ -159,9 +170,10 @@ class Helper():
                 target = target.to(dev)
                 
                 preds = network.forward(data)
-                count += torch.sum(preds == target).detach().item()
+                _, pred = torch.max(preds, dim=1)
+                count += torch.sum(pred == target).detach().item()
                 
-                batch_loss = network.cost(preds, target)
+                batch_loss = self.cost(preds, target)
                 #print('Test Batch Loss:', batch_loss.item()/ data.size(0) )
                 test_running_loss += batch_loss.item()
                 

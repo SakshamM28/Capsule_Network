@@ -50,8 +50,6 @@ class MnistCNN(nn.Module):
         self.model.add_module('linear2', nn.Linear(in_features=1600, out_features=10))
         self.model.add_module('activation4', nn.LogSoftmax(dim=1))
 
-        # Define the loss
-        self.loss = nn.NLLLoss()
 
     def forward(self, images: torch.Tensor) -> torch.Tensor:
         """
@@ -59,17 +57,8 @@ class MnistCNN(nn.Module):
         :return predictions: (batch_size, 10) Output predictions (log probabilities)
         """
         return self.model(images)
-
-    def cost(self, predictions: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
-        """
-        :param predictions: (batch_size, 10) Output predictions (log probabilities)
-        :param targets: (batch_size, 1) Target classes
-        :return cost: The negative log-likelihood loss
-        """
-        return self.loss(predictions, targets.view(-1))
     
 
-    
 def main(rank, world_size, batch_size, num_epochs, learning_rate, model_path, num_exp):
     
     print(rank, world_size, batch_size, num_epochs, learning_rate, model_path, num_exp)
@@ -136,7 +125,7 @@ def main(rank, world_size, batch_size, num_epochs, learning_rate, model_path, nu
             #print(preds.shape)
 
             # Compute the loss
-            loss = network.cost(preds, target)
+            loss = helper.cost(preds, target)
 
             # Take a gradient step
             optimizer.zero_grad()
