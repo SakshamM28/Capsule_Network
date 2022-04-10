@@ -151,6 +151,8 @@ if __name__ == '__main__':
         network.train()
         for batch_idx, (data, target) in enumerate(train_loader):
             print(data)
+            # undo normalization
+            data = data * 0.3081 + 0.1307
             # transformations for shifted MNIST
             shift, max_shift = 6, 6
             #print(data.shape)
@@ -162,6 +164,8 @@ if __name__ == '__main__':
             #print(np.shape(shifted_padded_data_numpy))
 
             data = torch.from_numpy(shifted_padded_data_numpy)
+            # redo normalization
+            data = (data - 0.1307) / 0.3081
             #print(data.shape)
             data = data.to(torch.device(dev))
             target = target.to(torch.device(dev))
@@ -179,7 +183,7 @@ if __name__ == '__main__':
             optimizer.step()
 
             writer.add_image('train images 1', data[0, :, :, :], epoch + 1)
-            writer.add_image('train images 2', data[0, :, :, :]*0.3081 + 0.1307, epoch + 1)
+            writer.add_image('train images 2', data[0, :, :, :] * 0.3081 + 0.1307, epoch + 1)
 
             # Show the loss
             print('Epoch:', '{:3d}'.format(epoch + 1),
