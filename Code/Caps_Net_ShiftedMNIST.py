@@ -32,10 +32,10 @@ def shift_2d(image, shift, max_shift):
     A 2D numpy array with the same shape of image.
     """
     max_shift += 1
-    padded_image = np.pad(image, max_shift, 'constant')
-    rolled_image = np.roll(padded_image, shift[0], axis=0)
-    rolled_image = np.roll(rolled_image, shift[1], axis=1)
-    shifted_image = rolled_image[max_shift:-max_shift, max_shift:-max_shift]
+    padded_image = np.pad(image, ((0, 0), (0, 0), (max_shift, max_shift), (max_shift, max_shift)), 'constant')
+    rolled_image = np.roll(padded_image, shift[:][0], axis=2)
+    rolled_image = np.roll(rolled_image, shift[:][1], axis=3)
+    shifted_image = rolled_image[:, :, max_shift:-max_shift, max_shift:-max_shift]
     return shifted_image
 
 
@@ -148,11 +148,14 @@ if __name__ == '__main__':
         network.train()
         for batch_idx, (data, target) in enumerate(train_loader):
             # transformations for shifted MNIST
+            shift, max_shift = 6, 6
             print(data.shape)
             data_numpy = data.cpu().detach().numpy()
-            padded_data_numpy = np.pad(data_numpy, 6, 'constant')
+            padded_data_numpy = np.pad(data_numpy, ((0, 0), (0, 0), (6, 6), (6, 6)), 'constant')
             print(np.shape(padded_data_numpy))
-
+            random_shifts = np.random.randint(-shift, shift + 1, (batch_size, 2))
+            shifted_padded_data_numpy = shift_2d(padded_data_numpy, random_shifts, max_shift=6)
+            print(np.shape(shifted_padded_data_numpy))
 
             
             data = data.to(torch.device(dev))
