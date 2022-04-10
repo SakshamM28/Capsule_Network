@@ -31,23 +31,20 @@ class MnistCNN(nn.Module):
         # Define the architecture
         self.model = nn.Sequential()
 
-        self.model.add_module('conv1', nn.Conv2d(in_channels=1, out_channels=16, kernel_size=5, padding=2)) # (40, 40, 16)
+        self.model.add_module('conv1', nn.Conv2d(in_channels=1, out_channels=16, kernel_size=5, padding=2)) # (28, 28, 16)
         self.model.add_module('activation1', nn.ReLU())
-        self.model.add_module('pool1', nn.MaxPool2d(kernel_size=2)) # (20, 20, 16)
+        self.model.add_module('pool1', nn.MaxPool2d(kernel_size=2))
 
-        self.model.add_module('conv2', nn.Conv2d(in_channels=16, out_channels=32, kernel_size=3, padding=1)) # (20, 20, 32)
+        self.model.add_module('conv2', nn.Conv2d(in_channels=16, out_channels=32, kernel_size=3, padding=1)) # (14, 14, 32)
         self.model.add_module('activation2', nn.ReLU())
-        self.model.add_module('pool2', nn.MaxPool2d(kernel_size=2)) # (10, 10, 32)
+        self.model.add_module('pool2', nn.MaxPool2d(kernel_size=2)) # (7, 7, 32)
 
         self.model.add_module('flatten', nn.Flatten())
 
-        self.model.add_module('linear1', nn.Linear(in_features=3200, out_features=1600))
+        self.model.add_module('linear1', nn.Linear(in_features=1568, out_features=128))
         self.model.add_module('activation3', nn.ReLU())
 
-        self.model.add_module('linear2', nn.Linear(in_features=1600, out_features=128))
-        self.model.add_module('activation3', nn.ReLU())
-
-        self.model.add_module('linear2', nn.Linear(in_features=1600, out_features=10))
+        self.model.add_module('linear2', nn.Linear(in_features=128, out_features=10))
         self.model.add_module('activation4', nn.LogSoftmax(dim=1))
 
         # Define the loss
@@ -58,16 +55,7 @@ class MnistCNN(nn.Module):
         :param images: (batch_size, height, width) Images to be classified
         :return predictions: (batch_size, 10) Output predictions (log probabilities)
         """
-        return self.model(images)
-
-    def cost(self, predictions: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
-        """
-        :param predictions: (batch_size, 10) Output predictions (log probabilities)
-        :param targets: (batch_size, 1) Target classes
-        :return cost: The negative log-likelihood loss
-        """
-        return self.loss(predictions, targets.view(-1))
-    
+        return self.model(images) 
 
     
 def main(rank, world_size, batch_size, num_epochs, learning_rate, model_path, num_exp):
@@ -120,7 +108,7 @@ def main(rank, world_size, batch_size, num_epochs, learning_rate, model_path, nu
             #print(preds.shape)
 
             # Compute the loss
-            loss = network.cost(preds, target)
+            loss = helper.cost(preds, target)
 
             # Take a gradient step
             optimizer.zero_grad()
