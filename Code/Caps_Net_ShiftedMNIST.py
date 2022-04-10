@@ -166,7 +166,7 @@ if __name__ == '__main__':
             data = torch.from_numpy(shifted_padded_data_numpy)
             # redo normalization
             data = (data - 0.1307) / 0.3081
-            #print(data.shape)
+            print('Input data shape: ', data.shape)
             data = data.to(torch.device(dev))
             target = target.to(torch.device(dev))
 
