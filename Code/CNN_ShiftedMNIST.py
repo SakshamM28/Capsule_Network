@@ -39,62 +39,47 @@ def shift_2d(image, shift, max_shift):
     return shifted_image
 
 
-class MNISTCapsuleNetworkModel(nn.Module):
-    
+class MnistCNN(nn.Module):
+
     def __init__(self):
-        super(MNISTCapsuleNetworkModel, self).__init__()
-        
-        
-        self.conv1 = nn.Conv2d(in_channels=1, out_channels=256, kernel_size=9, stride=1)
-        self.conv2 = nn.Conv2d(in_channels=256, out_channels=32 * 8, kernel_size=9, stride=2, padding=0)
-        
-        self.squash = Squash()
-        
-        self.digit_capsules = Routing(32 * 12 * 12, 10, 8, 16, 3)
-        
-        
-        self.decoder = nn.Sequential(
-            nn.Linear(16 * 10, 512),
-            nn.ReLU(),
-            nn.Linear(512, 1024),
-            nn.ReLU(),
-            nn.Linear(1024, 2048),
-            nn.ReLU(),
-            nn.Linear(2048, 1600),
-            nn.Sigmoid()
-        )
-        
-        self.margin_loss = MarginLoss(n_labels=10)
-        self.reconstruction_loss = nn.MSELoss(reduction='sum')
-        
-    def forward(self, data: torch.Tensor):
-        
-        x = F.relu(self.conv1(data))
-        x = self.conv2(x)
-        #print('After Conv2: ', x.shape)
-        
-        caps = x.view(x.shape[0], 8, 32 * 12 * 12).permute(0, 2, 1)
-        caps = self.squash.perform(caps)
-        caps = self.digit_capsules.perform(caps)
-        
-        
-        with torch.no_grad():
-            pred = (caps ** 2).sum(-1).argmax(-1)
-            mask = torch.eye(10, device=data.device)[pred]
-            
-        reconstructions = self.decoder((caps * mask[:, :, None]).view(x.shape[0], -1))
-        
-        reconstructions = reconstructions.view(-1, 1, 40, 40)
-        
-        return caps, reconstructions, pred
-    
-    def cost(self, caps: torch.Tensor, targets: torch.Tensor, reconstructions: torch.Tensor, data: torch.Tensor, isReconstruction = False) -> torch.Tensor:
-        
-        margin_loss = self.margin_loss.calculate(caps, targets)
-        if isReconstruction == True:
-            return  margin_loss + 0.0005 * self.reconstruction_loss(reconstructions, data)
-        
-        return margin_loss
+        super(MnistCNN, self).__init__()
+
+        # Define the architecture
+        self.model = nn.Sequential()
+
+        self.model.add_module('conv1', nn.Conv2d(in_channels=1, out_channels=16, kernel_size=5, padding=2)) # (28, 28, 16)
+        self.model.add_module('activation1', nn.ReLU())
+        self.model.add_module('pool1', nn.MaxPool2d(kernel_size=2))
+
+        self.model.add_module('conv2', nn.Conv2d(in_channels=16, out_channels=32, kernel_size=3, padding=1)) # (14, 14, 32)
+        self.model.add_module('activation2', nn.ReLU())
+        self.model.add_module('pool2', nn.MaxPool2d(kernel_size=2)) # (7, 7, 32)
+
+        self.model.add_module('flatten', nn.Flatten())
+
+        self.model.add_module('linear1', nn.Linear(in_features=1568, out_features=128))
+        self.model.add_module('activation3', nn.ReLU())
+
+        self.model.add_module('linear2', nn.Linear(in_features=128, out_features=10))
+        self.model.add_module('activation4', nn.LogSoftmax(dim=1))
+
+        # Define the loss
+        self.loss = nn.NLLLoss()
+
+    def forward(self, images: torch.Tensor) -> torch.Tensor:
+        """
+        :param images: (batch_size, height, width) Images to be classified
+        :return predictions: (batch_size, 10) Output predictions (log probabilities)
+        """
+        return self.model(images)
+
+    def cost(self, predictions: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+        """
+        :param predictions: (batch_size, 10) Output predictions (log probabilities)
+        :param targets: (batch_size, 1) Target classes
+        :return cost: The negative log-likelihood loss
+        """
+        return self.loss(predictions, targets.view(-1))
     
     
 if __name__ == '__main__':
@@ -136,7 +121,7 @@ if __name__ == '__main__':
     print("Test dataset size: ", test_loader.dataset.data.size(0))
 
     # Set up the network and optimizer
-    network = MNISTCapsuleNetworkModel()
+    network = MnistCNN()
     network.to(torch.device(dev))
     print(helper.count_parameters(network))
     optimizer = optim.Adam(network.parameters(), lr=learning_rate)
