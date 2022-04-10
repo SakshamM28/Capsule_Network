@@ -50,7 +50,7 @@ class MNISTCapsuleNetworkModel(nn.Module):
         
         self.squash = Squash()
         
-        self.digit_capsules = Routing(32 * 6 * 6, 10, 8, 16, 3)
+        self.digit_capsules = Routing(32 * 12 * 12, 10, 8, 16, 3)
         
         
         self.decoder = nn.Sequential(
@@ -69,9 +69,9 @@ class MNISTCapsuleNetworkModel(nn.Module):
         
         x = F.relu(self.conv1(data))
         x = self.conv2(x)
-        print('After Conv2: ', x.shape)
+        #print('After Conv2: ', x.shape)
         
-        caps = x.view(x.shape[0], 8, 32 * 6 * 6).permute(0, 2, 1)
+        caps = x.view(x.shape[0], 8, 32 * 12 * 12).permute(0, 2, 1)
         caps = self.squash.perform(caps)
         caps = self.digit_capsules.perform(caps)
         
