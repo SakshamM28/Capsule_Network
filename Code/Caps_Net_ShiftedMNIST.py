@@ -7,6 +7,7 @@ Created on Mon Apr  4 14:27:08 2022
 """
 
 import sys
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -18,6 +19,25 @@ import torchvision.utils as tvutils
 from torch.utils.tensorboard import SummaryWriter
 
 from Modules import Squash, Routing, MarginLoss, Helper
+
+
+def shift_2d(image, shift, max_shift):
+    """Shifts the image along each axis by introducing zero.
+
+    Args:
+    image: A 2D numpy array to be shifted.
+    shift: A tuple indicating the shift along each axis.
+    max_shift: The maximum possible shift.
+    Returns:
+    A 2D numpy array with the same shape of image.
+    """
+    max_shift += 1
+    padded_image = np.pad(image, max_shift, 'constant')
+    rolled_image = np.roll(padded_image, shift[0], axis=0)
+    rolled_image = np.roll(rolled_image, shift[1], axis=1)
+    shifted_image = rolled_image[max_shift:-max_shift, max_shift:-max_shift]
+    return shifted_image
+
 
 class MNISTCapsuleNetworkModel(nn.Module):
     
@@ -129,6 +149,11 @@ if __name__ == '__main__':
         for batch_idx, (data, target) in enumerate(train_loader):
             # transformations for shifted MNIST
             print(data)
+            data_numpy = torch.cpu().detach().numpy()
+            padded_data_numpy = np.pad(data_numpy, 6, 'constant')
+            print(np.shape(padded_data_numpy))
+
+
             
             data = data.to(torch.device(dev))
             target = target.to(torch.device(dev))
