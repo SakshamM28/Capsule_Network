@@ -149,15 +149,16 @@ if __name__ == '__main__':
         for batch_idx, (data, target) in enumerate(train_loader):
             # transformations for shifted MNIST
             shift, max_shift = 6, 6
-            print(data.shape)
+            #print(data.shape)
             data_numpy = data.cpu().detach().numpy()
             padded_data_numpy = np.pad(data_numpy, ((0, 0), (0, 0), (6, 6), (6, 6)), 'constant')
-            print(np.shape(padded_data_numpy))
+            #print(np.shape(padded_data_numpy))
             random_shifts = np.random.randint(-shift, shift + 1, (batch_size, 2))
             shifted_padded_data_numpy = shift_2d(padded_data_numpy, random_shifts, max_shift=6)
-            print(np.shape(shifted_padded_data_numpy))
+            #print(np.shape(shifted_padded_data_numpy))
 
-            
+            data = torch.from_numpy(shifted_padded_data_numpy)
+            print(data.shape)
             data = data.to(torch.device(dev))
             target = target.to(torch.device(dev))
 
