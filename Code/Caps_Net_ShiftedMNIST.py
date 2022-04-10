@@ -71,7 +71,7 @@ class MNISTCapsuleNetworkModel(nn.Module):
         
         x = F.relu(self.conv1(data))
         x = self.conv2(x)
-        #print('After Conv2: ', x.shape)
+        print('After Conv2: ', x.shape)
         
         caps = x.view(x.shape[0], 8, 32 * 12 * 12).permute(0, 2, 1)
         caps = self.squash.perform(caps)
@@ -130,7 +130,7 @@ if __name__ == '__main__':
                            transforms.ToTensor(),
                            transforms.Normalize((0.1307,), (0.3081,))
                        ])),
-        batch_size=batch_size)
+        batch_size=batch_size, drop_last=True)
 
     print("Training dataset size: ", train_loader.dataset.data.size(0))
     print("Test dataset size: ", test_loader.dataset.data.size(0))
@@ -177,9 +177,6 @@ if __name__ == '__main__':
             loss.backward()
             optimizer.step()
 
-            grid = tvutils.make_grid(data)
-            writer.add_image('reconstructed_images', grid, epoch + 1)
-
             # Show the loss
             print('Epoch:', '{:3d}'.format(epoch + 1),
                   '\tTraining Batch:', '{:3d}'.format(batch_idx + 1),
@@ -197,8 +194,8 @@ if __name__ == '__main__':
         writer.add_scalar('learning rate', lr_scheduler.get_last_lr()[0], (epoch + 1))
 
         # visualize training images and reconstructed images
-        grid = tvutils.make_grid(data)
-        writer.add_image('reconstructed_images', grid, epoch + 1)
+        #grid = tvutils.make_grid(data)
+        writer.add_image('train images', data[0,:,:,:], epoch + 1)
         grid = tvutils.make_grid(reconstructions)
         writer.add_image('reconstructed_images', grid, epoch+1)
 
