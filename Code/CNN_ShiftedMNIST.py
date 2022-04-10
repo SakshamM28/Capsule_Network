@@ -211,7 +211,7 @@ if __name__ == '__main__':
 
             preds = network.forward(data)
 
-            batch_loss = network.cost(preds)
+            batch_loss = network.cost(preds, target)
             print('Epoch:', '{:3d}'.format(epoch + 1),
                   '\tTesting Batch:', '{:3d}'.format(batch_idx + 1),
                   '\tTesting Loss:', '{:10.5f}'.format(batch_loss.item()/ data.size(0)))
