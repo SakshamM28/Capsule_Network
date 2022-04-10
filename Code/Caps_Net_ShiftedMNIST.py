@@ -58,7 +58,9 @@ class MNISTCapsuleNetworkModel(nn.Module):
             nn.ReLU(),
             nn.Linear(512, 1024),
             nn.ReLU(),
-            nn.Linear(1024, 784),
+            nn.Linear(1024, 2048),
+            nn.ReLU(),
+            nn.Linear(2048, 1600),
             nn.Sigmoid()
         )
         
@@ -82,7 +84,7 @@ class MNISTCapsuleNetworkModel(nn.Module):
             
         reconstructions = self.decoder((caps * mask[:, :, None]).view(x.shape[0], -1))
         
-        reconstructions = reconstructions.view(-1, 1, 28, 28)
+        reconstructions = reconstructions.view(-1, 1, 40, 40)
         
         return caps, reconstructions, pred
     
@@ -159,13 +161,13 @@ if __name__ == '__main__':
             #print(np.shape(shifted_padded_data_numpy))
 
             data = torch.from_numpy(shifted_padded_data_numpy)
-            print(data.shape)
+            #print(data.shape)
             data = data.to(torch.device(dev))
             target = target.to(torch.device(dev))
 
             # Get the predictions
             caps, reconstructions, preds = network.forward(data)
-            print(preds.shape)
+            #print(preds.shape)
 
             # Compute the loss
             loss = network.cost(caps, target, reconstructions, data, True)
@@ -191,9 +193,11 @@ if __name__ == '__main__':
         writer.add_scalar('training epoch loss', epoch_loss, (epoch+1))
         writer.add_scalar('learning rate', lr_scheduler.get_last_lr()[0], (epoch + 1))
 
-        # visualize training image reconstruction
+        # visualize training images and reconstructed images
+        grid = tvutils.make_grid(data)
+        writer.add_image('reconstructed_images', grid, epoch + 1)
         grid = tvutils.make_grid(reconstructions)
-        writer.add_image('train_images', grid, epoch+1)
+        writer.add_image('reconstructed_images', grid, epoch+1)
 
 
         ## For every epoch calculate validation/testing loss
