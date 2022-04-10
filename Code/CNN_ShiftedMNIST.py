@@ -156,11 +156,11 @@ if __name__ == '__main__':
             target = target.to(torch.device(dev))
 
             # Get the predictions
-            caps, reconstructions, preds = network.forward(data)
+            preds = network.forward(data)
             #print(preds.shape)
 
             # Compute the loss
-            loss = network.cost(caps, target, reconstructions, data, True)
+            loss = network.cost(preds, target)
 
             # Take a gradient step
             optimizer.zero_grad()
@@ -211,9 +211,9 @@ if __name__ == '__main__':
             data = data.to(torch.device(dev))
             target = target.to(torch.device(dev))
 
-            caps, reconstructions, preds = network.forward(data)
+            preds = network.forward(data)
 
-            batch_loss = network.cost(caps, target, reconstructions, data, True)
+            batch_loss = network.cost(preds)
             print('Epoch:', '{:3d}'.format(epoch + 1),
                   '\tTesting Batch:', '{:3d}'.format(batch_idx + 1),
                   '\tTesting Loss:', '{:10.5f}'.format(batch_loss.item()/ data.size(0)))
@@ -224,10 +224,6 @@ if __name__ == '__main__':
         epoch_loss = test_running_loss / test_loader.dataset.data.size(0)
         # ...log the evaluation loss
         writer.add_scalar('evaluation epoch loss', epoch_loss, (epoch+1))
-
-        # visualize validation image reconstruction
-        grid = tvutils.make_grid(reconstructions)
-        writer.add_image('val_images', grid, epoch + 1)
 
     
     network.eval()
@@ -253,7 +249,7 @@ if __name__ == '__main__':
         data = data.to(torch.device(dev))
         target = target.to(torch.device(dev))
         
-        _, _, preds = network.forward(data)
+        preds = network.forward(data)
         count += torch.sum(preds == target).detach().item()
     print('Training Accuracy:', float(count) / train_loader.dataset.data.size(0))
 
@@ -280,10 +276,10 @@ if __name__ == '__main__':
         data = data.to(torch.device(dev))
         target = target.to(torch.device(dev))
         
-        caps, reconstructions, preds = network.forward(data)
+        preds = network.forward(data)
         count += torch.sum(preds == target).detach().item()
         
-        batch_loss = network.cost(caps, target, reconstructions, data, True)
+        batch_loss = network.cost(preds, target)
         print('Test Batch Loss:', batch_loss.item()/ data.size(0) )
         running_loss += batch_loss.item()
         
