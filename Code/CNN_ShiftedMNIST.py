@@ -98,7 +98,7 @@ if __name__ == '__main__':
     learning_rate = 1e-3
 
     # Tensorboard
-    writer = SummaryWriter('runs/capsule_mnist_experiment_1')
+    writer = SummaryWriter('runs/cnn_mnist_experiment_1')
 
     # Set up the data loader
     train_loader = torch.utils.data.DataLoader(
