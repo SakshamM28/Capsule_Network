@@ -158,6 +158,8 @@ if __name__ == '__main__':
             target = target.to(torch.device(dev))
 
             preds = network.forward(data)
+
+            print(preds.shape, target.shape)
             count += torch.sum(preds == target).detach().item()
 
             batch_loss = network.cost(preds, target)
