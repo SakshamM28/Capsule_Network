@@ -139,14 +139,15 @@ def shift_write_multi_mnist(input_dataset, shift, pad, num_pairs, split='train')
         pickle.dump(multi_mnist_dataset, output)
 
 
-def main(num_pairs=100):
-    data = read_byte_data(data_dir='/Users/kunal/Downloads/capsule_networks_exps/MNIST', split='train')
+def main(data_dir, num_pairs=100):
+    data = read_byte_data(data_dir=data_dir, split='train')
     shift_write_multi_mnist(data, shift=6, pad=4, num_pairs=num_pairs, split='train')
-    data = read_byte_data(data_dir='/Users/kunal/Downloads/capsule_networks_exps/MNIST', split='test')
+    data = read_byte_data(data_dir=data_dir, split='test')
     shift_write_multi_mnist(data, shift=6, pad=4, num_pairs=num_pairs, split='test')
 
 
 if __name__ == '__main__':
     # Control variables
-    num_pairs = int(sys.argv[1])
-    main(num_pairs)
+    data_dir = sys.argv[1]
+    num_pairs = int(sys.argv[2])
+    main(data_dir, num_pairs)
