@@ -150,6 +150,7 @@ if __name__ == '__main__':
 
         network.train()
         for batch_idx, (data, target) in enumerate(train_loader):
+            print(data)
             # transformations for shifted MNIST
             shift, max_shift = 6, 6
             #print(data.shape)
