@@ -177,6 +177,9 @@ if __name__ == '__main__':
             loss.backward()
             optimizer.step()
 
+            grid = tvutils.make_grid(data)
+            writer.add_image('reconstructed_images', grid, epoch + 1)
+
             # Show the loss
             print('Epoch:', '{:3d}'.format(epoch + 1),
                   '\tTraining Batch:', '{:3d}'.format(batch_idx + 1),
