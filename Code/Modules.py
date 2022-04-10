@@ -6,31 +6,30 @@ Created on Sun Apr  3 20:36:13 2022
 @author: saksham
 """
 
+import os
 import torch
-from torch import linalg as LA
+
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.utils.data
 
-import torch.nn as nn
+from torchvision import datasets, transforms
+import torch.distributed as dist
+from torch.utils.data.distributed import DistributedSampler
+import torchvision.utils as tvutils
 
 from prettytable import PrettyTable
 
 class Squash():
     
-    # Use if any parameter required like epsilon
-    ##def __init__():
-        
+    def __init__(self, epsilon=1e-8):
+        self.epsilon = epsilon
     def perform(self, s: torch.Tensor):
-        
-        #s_norm = LA.norm(s, dim=-1)
-        
-        #return ((s_norm ** 2)/(1 + s_norm **2)) * s / s_norm
-        
-        
+
         s2 = (s ** 2).sum(dim=-1, keepdims=True)
         
-        return (s2 / (1 + s2)) * (s / torch.sqrt(s2))
+        # Adding epsilon in case s2 become 0
+        return (s2 / (1 + s2)) * (s / torch.sqrt(s2 + self.epsilon))
     
 class Routing(nn.Module):
     
@@ -38,12 +37,14 @@ class Routing(nn.Module):
         
         super(Routing,self).__init__()
 
+        #Intitialization with parameters required for routing
         self.in_caps = in_caps
         self.out_caps = out_caps
         self.iterations = iterations
         self.softmax = nn.Softmax(dim=1)
         self.squash = Squash()
         
+        # Weight matrix learned during training
         self.weight = nn.Parameter(torch.randn(in_caps, out_caps, in_d, out_d), requires_grad=True)
         
         
@@ -88,10 +89,44 @@ class MarginLoss():
             
         return loss.sum(dim=-1).sum()
 
+
+class DatasetHelper():
+    def getDataSet(isTrain):
+
+        return datasets.MNIST('./Data/mnist/', train=isTrain, download=True,
+                       transform=transforms.Compose([
+                           transforms.ToTensor(),
+                           transforms.Normalize((0.1307,), (0.3081,))
+                       ]))
+
+
+class DataParallel():
+
+    def setup(self, rank, world_size):
+        os.environ['MASTER_ADDR'] = 'localhost'
+        os.environ['MASTER_PORT'] = '12355'
+        dist.init_process_group(backend="nccl", rank=rank, world_size=world_size)
+
+    def prepare(self, isTrain, rank, world_size, batch_size=128, pin_memory=False, num_workers=0):
+        dataset = DatasetHelper.getDataSet(isTrain)
+        sampler = DistributedSampler(dataset, num_replicas=world_size, rank=rank, shuffle=False, drop_last=False)
+
+        dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, pin_memory=pin_memory, num_workers=num_workers, drop_last=False, shuffle=False, sampler=sampler)
+
+        return dataloader
+
+    def cleanup(self):
+        dist.destroy_process_group()
+
 class Helper():
 
+    def __init__(self):
 
-    def count_parameters(model):
+        self.margin_loss = MarginLoss(n_labels=10)
+        self.reconstruction_loss = nn.MSELoss(reduction='sum')
+
+
+    def count_parameters(self, model):
         table = PrettyTable(["Modules", "Parameters"])
         total_params = 0
         for name, parameter in model.named_parameters():
@@ -102,3 +137,79 @@ class Helper():
         print(table)
         print(f"Total Trainable Params: {total_params}")
         return total_params
+
+
+    def cost(self, caps: torch.Tensor, targets: torch.Tensor, reconstructions: torch.Tensor, data: torch.Tensor, isReconstruction = False) -> torch.Tensor:
+
+        margin_loss = self.margin_loss.calculate(caps, targets)
+        if isReconstruction == True:
+            return  margin_loss + 0.0005 * self.reconstruction_loss(reconstructions, data)
+
+        return margin_loss
+
+    def evaluate(self, network, epoch, batch_size,writer,rank=None):
+
+        if rank:
+            dev = rank
+        elif torch.cuda.is_available():
+            print("GPU available")
+            dev = torch.device("cuda")
+        else:
+            dev = torch.device("cpu")
+
+        train_loader = torch.utils.data.DataLoader(DatasetHelper.getDataSet(True), batch_size=batch_size)
+        test_loader = torch.utils.data.DataLoader(DatasetHelper.getDataSet(False), batch_size=batch_size)
+
+        network.to(dev)
+        network.eval()
+        # Compute accuracy on training set
+        count = 0
+        train_running_loss = 0.0
+        for batch_idx, (data, target) in enumerate(train_loader):
+
+            data = data.to(dev)
+            target = target.to(dev)
+
+            caps, reconstructions, preds = network.forward(data)
+            count += torch.sum(preds == target).detach().item()
+
+            batch_loss = self.cost(caps, target, reconstructions, data, True)
+
+            train_running_loss += batch_loss.item()
+
+            # Logging reconstructed images
+            grid = tvutils.make_grid(reconstructions)
+            writer.add_image('train_images', grid, (epoch+1))
+
+        train_loss = train_running_loss / train_loader.dataset.data.size(0)
+
+        train_accuracy = float(count) / train_loader.dataset.data.size(0)
+
+        # Compute accuracy on test set
+        count = 0
+        test_running_loss = 0.0
+
+        with torch.no_grad():
+            for batch_idx, (data, target) in enumerate(test_loader):
+
+                data = data.to(dev)
+                target = target.to(dev)
+
+                caps, reconstructions, preds = network.forward(data)
+                count += torch.sum(preds == target).detach().item()
+
+                batch_loss = self.cost(caps, target, reconstructions, data, True)
+                #print('Test Batch Loss:', batch_loss.item()/ data.size(0) )
+                test_running_loss += batch_loss.item()
+
+                grid = tvutils.make_grid(reconstructions)
+                writer.add_image('test_images', grid, (epoch+1))
+
+        test_loss = test_running_loss / test_loader.dataset.data.size(0)
+
+        test_accuracy = float(count) / test_loader.dataset.data.size(0)
+        print('Test Accuracy:', test_accuracy)
+        print('Test Loss:', test_loss)
+
+        return train_accuracy, test_accuracy, train_loss, test_loss
+
