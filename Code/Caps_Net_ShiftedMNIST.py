@@ -177,6 +177,9 @@ if __name__ == '__main__':
             loss.backward()
             optimizer.step()
 
+            writer.add_image('train images 1', data[0, :, :, :], epoch + 1)
+            writer.add_image('train images 2', data[0, :, :, :]*0.3081 + 0.1307, epoch + 1)
+
             # Show the loss
             print('Epoch:', '{:3d}'.format(epoch + 1),
                   '\tTraining Batch:', '{:3d}'.format(batch_idx + 1),
