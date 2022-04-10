@@ -148,7 +148,7 @@ if __name__ == '__main__':
         network.train()
         for batch_idx, (data, target) in enumerate(train_loader):
             # transformations for shifted MNIST
-            print(data)
+            print(data.shape)
             data_numpy = data.cpu().detach().numpy()
             padded_data_numpy = np.pad(data_numpy, 6, 'constant')
             print(np.shape(padded_data_numpy))
