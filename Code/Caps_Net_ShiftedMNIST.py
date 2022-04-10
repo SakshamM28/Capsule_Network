@@ -69,6 +69,7 @@ class MNISTCapsuleNetworkModel(nn.Module):
         
         x = F.relu(self.conv1(data))
         x = self.conv2(x)
+        print('After Conv2: ', x.shape)
         
         caps = x.view(x.shape[0], 8, 32 * 6 * 6).permute(0, 2, 1)
         caps = self.squash.perform(caps)
