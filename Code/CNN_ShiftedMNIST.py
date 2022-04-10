@@ -47,20 +47,23 @@ class MnistCNN(nn.Module):
         # Define the architecture
         self.model = nn.Sequential()
 
-        self.model.add_module('conv1', nn.Conv2d(in_channels=1, out_channels=16, kernel_size=5, padding=2)) # (28, 28, 16)
+        self.model.add_module('conv1', nn.Conv2d(in_channels=1, out_channels=16, kernel_size=5, padding=2)) # (40, 40, 16)
         self.model.add_module('activation1', nn.ReLU())
-        self.model.add_module('pool1', nn.MaxPool2d(kernel_size=2))
+        self.model.add_module('pool1', nn.MaxPool2d(kernel_size=2)) # (20, 20, 16)
 
-        self.model.add_module('conv2', nn.Conv2d(in_channels=16, out_channels=32, kernel_size=3, padding=1)) # (14, 14, 32)
+        self.model.add_module('conv2', nn.Conv2d(in_channels=16, out_channels=32, kernel_size=3, padding=1)) # (20, 20, 32)
         self.model.add_module('activation2', nn.ReLU())
-        self.model.add_module('pool2', nn.MaxPool2d(kernel_size=2)) # (7, 7, 32)
+        self.model.add_module('pool2', nn.MaxPool2d(kernel_size=2)) # (10, 10, 32)
 
         self.model.add_module('flatten', nn.Flatten())
 
-        self.model.add_module('linear1', nn.Linear(in_features=1568, out_features=128))
+        self.model.add_module('linear1', nn.Linear(in_features=3200, out_features=1600))
         self.model.add_module('activation3', nn.ReLU())
 
-        self.model.add_module('linear2', nn.Linear(in_features=128, out_features=10))
+        self.model.add_module('linear2', nn.Linear(in_features=1600, out_features=128))
+        self.model.add_module('activation3', nn.ReLU())
+
+        self.model.add_module('linear2', nn.Linear(in_features=1600, out_features=10))
         self.model.add_module('activation4', nn.LogSoftmax(dim=1))
 
         # Define the loss
