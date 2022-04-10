@@ -127,6 +127,8 @@ if __name__ == '__main__':
 
         network.train()
         for batch_idx, (data, target) in enumerate(train_loader):
+            # transformations for shifted MNIST
+            print(data)
             
             data = data.to(torch.device(dev))
             target = target.to(torch.device(dev))
