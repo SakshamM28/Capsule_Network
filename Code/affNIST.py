@@ -14,8 +14,10 @@ import scipy.io as sio
 import numpy as np
 
 import torch.utils.data
-
+from torch.utils.tensorboard import SummaryWriter
 from skimage.transform import resize
+
+import torchvision.utils as tvutils
 
 
 class affNISTData(torch.utils.data.Dataset):
@@ -36,6 +38,9 @@ class affNISTData(torch.utils.data.Dataset):
 
 
 def getDataset():
+    
+    # Tensorboard
+    writer = SummaryWriter('runs/capsule_affnist_eval')
 
     # Test data URL
 
@@ -69,6 +74,9 @@ def getDataset():
         
         # Transposing make [1, 28,28] as feeded to network
         images_reized_l.append(image_resized.T)
+        
+        grid = tvutils.make_grid(torch.from_numpy(image_resized.reshape(28,28)))
+        writer.add_image('resized_images', grid, i+1)
     print(len(images_reized_l))
     
     print(np.array(images_reized_l).shape)

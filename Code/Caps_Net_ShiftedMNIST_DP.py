@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Mon Apr  4 14:27:08 2022
+Created on Mon Apr  10 16:00:08 2022
 
 @author: saksham
 """
@@ -19,6 +19,8 @@ from torch.utils.tensorboard import SummaryWriter
 
 from Modules import Squash, Routing, Helper, DataParallel, DatasetHelper
 
+import numpy as np
+
 class MNISTCapsuleNetworkModel(nn.Module):
     #TODO take dynamic parameters for routing, input size etc
     def __init__(self):
@@ -30,7 +32,7 @@ class MNISTCapsuleNetworkModel(nn.Module):
         
         self.squash = Squash()
         
-        self.digit_capsules = Routing(32 * 6 * 6, 10, 8, 16, 3)
+        self.digit_capsules = Routing(32 * 12 * 12, 10, 8, 16, 3)
         
         
         self.decoder = nn.Sequential(
@@ -38,7 +40,9 @@ class MNISTCapsuleNetworkModel(nn.Module):
             nn.ReLU(),
             nn.Linear(512, 1024),
             nn.ReLU(),
-            nn.Linear(1024, 784),
+            nn.Linear(1024, 2048),
+            nn.ReLU(),
+            nn.Linear(2048, 1600),
             nn.Sigmoid()
         )
         
@@ -47,7 +51,7 @@ class MNISTCapsuleNetworkModel(nn.Module):
         x = F.relu(self.conv1(data))
         x = self.conv2(x)
         
-        caps = x.view(x.shape[0], 8, 32 * 6 * 6).permute(0, 2, 1)
+        caps = x.view(x.shape[0], 8, 32 * 12 * 12).permute(0, 2, 1)
         caps = self.squash.perform(caps)
         caps = self.digit_capsules.perform(caps)
         
@@ -58,7 +62,7 @@ class MNISTCapsuleNetworkModel(nn.Module):
             
         reconstructions = self.decoder((caps * mask[:, :, None]).view(x.shape[0], -1))
         
-        reconstructions = reconstructions.view(-1, 1, 28, 28)
+        reconstructions = reconstructions.view(-1, 1, 40, 40)
         
         return caps, reconstructions, pred
     
@@ -69,7 +73,7 @@ def main(rank, world_size, batch_size, num_epochs, learning_rate, model_path, nu
     helper = Helper()
 
     # Tensorboard
-    writer = SummaryWriter('runs/capsule_mnist_experiment_' + str(num_epochs) + "_" + str(num_exp))
+    writer = SummaryWriter('runs/capsule_shifted_mnist_experiment_' + str(num_epochs) + "_" + str(num_exp))
 
     # Data Parallelism for Multiple GPU
     dataParallel = DataParallel()
@@ -103,6 +107,22 @@ def main(rank, world_size, batch_size, num_epochs, learning_rate, model_path, nu
 
         network.train()
         for batch_idx, (data, target) in enumerate(train_loader):
+            
+            
+            # undo normalization
+            data = data * 0.3081 + 0.1307
+            # transformations for shifted MNIST
+            shift, max_shift = 6, 6
+            #print(data.shape)
+            data_numpy = data.cpu().detach().numpy()
+            padded_data_numpy = np.pad(data_numpy, ((0, 0), (0, 0), (6, 6), (6, 6)), 'constant')
+            #print(np.shape(padded_data_numpy))
+            random_shifts = np.random.randint(-shift, shift + 1, (batch_size, 2))
+            shifted_padded_data_numpy = helper.shift_2d(padded_data_numpy, random_shifts, max_shift=6)
+            #print(np.shape(shifted_padded_data_numpy))
+            data = torch.from_numpy(shifted_padded_data_numpy)
+            # redo normalization
+            data = (data - 0.1307) / 0.3081
 
             data = data.to(rank)
             target = target.to(rank)
@@ -123,7 +143,7 @@ def main(rank, world_size, batch_size, num_epochs, learning_rate, model_path, nu
         lr_scheduler.step()
         
         # Calculate accuracies on whole dataset
-        train_accuracy, test_accuracy, train_loss, test_loss= helper.evaluate(network, epoch, batch_size, writer, rank)
+        train_accuracy, test_accuracy, train_loss, test_loss= helper.evaluate(network, epoch, batch_size, writer, rank, True)
         
         print('Epoch:', '{:3d}'.format(epoch + 1),
               '\tTraining Accuracy:', '{:10.5f}'.format(train_accuracy),
@@ -171,7 +191,7 @@ if __name__ == '__main__':
     num_epochs = int(sys.argv[2])
     learning_rate = 1e-3
     num_exp = int(sys.argv[3])
-    model_path = "saved_model/250_e/caps_net_mnist_" + str(num_epochs) + "_"
+    model_path = "saved_model/shifted_mnist_250_e/caps_net_shifted_mnist_" + str(num_epochs) + "_"
     
     # Put no. of GPU's used
     world_size = 2
