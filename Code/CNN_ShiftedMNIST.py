@@ -186,11 +186,6 @@ if __name__ == '__main__':
         writer.add_scalar('training epoch loss', epoch_loss, (epoch+1))
         writer.add_scalar('learning rate', lr_scheduler.get_last_lr()[0], (epoch + 1))
 
-        # visualize training images and reconstructed images
-        writer.add_image('train images', data[0, :, :, :] * 0.3081 + 0.1307, epoch + 1)
-        grid = tvutils.make_grid(reconstructions)
-        writer.add_image('reconstructed_images', grid, epoch+1)
-
 
         ## For every epoch calculate validation/testing loss
         network.eval()
