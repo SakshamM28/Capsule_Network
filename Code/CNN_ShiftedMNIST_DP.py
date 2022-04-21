@@ -23,10 +23,10 @@ from Modules_CNN import Helper, DataParallel, DatasetHelper
 
 import numpy as np
 
-class MnistCNN(nn.Module):
+class ShiftedMnistCNN(nn.Module):
 
     def __init__(self):
-        super(MnistCNN, self).__init__()
+        super(ShiftedMnistCNN, self).__init__()
 
         # Define the architecture
         self.model = nn.Sequential()
@@ -82,7 +82,7 @@ def main(rank, world_size, batch_size, num_epochs, learning_rate, model_path, nu
     print("Test dataset size: ", test_loader.dataset.data.size(0))
 
     # Set up the network and optimizer
-    network = MnistCNN()
+    network = ShiftedMnistCNN()
     network.to(rank)
     network= DDP(network, device_ids=[rank], output_device=rank, find_unused_parameters=True)
 
@@ -160,8 +160,8 @@ def main(rank, world_size, batch_size, num_epochs, learning_rate, model_path, nu
         if test_accuracy == max(test_acc_l):
             best_epoch = epoch + 1
 
-        # Saving the model
-        torch.save(network.state_dict(), model_path + str(epoch+1) + ".pt")
+            # Saving the model with best test accuracy till current epoch
+            torch.save(network.state_dict(), model_path + "cnn_shifted_mnist_" + str(num_epochs) + "_" + str(epoch+1) + ".pt")
 
 
     writer.flush()
@@ -184,7 +184,7 @@ if __name__ == '__main__':
     num_epochs = int(sys.argv[2])
     learning_rate = 1e-3
     num_exp = int(sys.argv[3])
-    model_path = "saved_model/cnn_shifted_mnist/cnn_shifted_mnist_" + str(num_epochs) + "_"
+    model_path = "saved_model/cnn_shifted_mnist/"
     
     # Put no. of GPU's used
     world_size = 2

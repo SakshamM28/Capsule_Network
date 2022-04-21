@@ -19,28 +19,29 @@ from skimage.transform import resize
 
 import torchvision.utils as tvutils
 
+from torchvision import transforms
 
 class affNISTData(torch.utils.data.Dataset):
-    def __init__(self, images, labels):
+    def __init__(self, images, labels, transform):
         
         self.dataset = images
         self.labels = labels
+        self.transform=transform
         
     def __len__(self):
         return len(self.dataset)
     
     def __getitem__(self, idx):
         
-        img_tensor = torch.from_numpy(self.dataset[idx])
-        label_tensor = self.labels[idx]
+        img = self.dataset[idx]
+        label = self.labels[idx]
         
-        return img_tensor, label_tensor
+        img_norm = self.transform(img)
+
+        return img_norm, label
 
 
-def getDataset():
-    
-    # Tensorboard
-    writer = SummaryWriter('runs/capsule_affnist_eval')
+def getDataset(isResized=False):
 
     # Test data URL
 
@@ -59,7 +60,7 @@ def getDataset():
     
         with ZipFile(zip_path, 'r') as zip:
             zip.extractall(path=data_dir)
-        
+
     data_path = os.path.join(data_dir, file_name)
     
     data = sio.loadmat(data_path)
@@ -68,15 +69,24 @@ def getDataset():
     images = np.stack(data['affNISTdata']['image'].ravel()).transpose().reshape(-1,40,40,1).astype(np.float32)
     print("Images shape",images.shape)
     
+    #max_val , min_val = images.max(), images.min() # 255 , 0
+    #print(max_val, min_val)
+
+    mean = 0.0
+
     images_reized_l = []
     for i in range(0, len(images)):
-        image_resized = resize(images[i], (28, 28 ),anti_aliasing=True)
+        if isResized == True:
+            #print(" Resizing images to 28x28 for mnist")
+            image_resized = resize(images[i], (28, 28 ),anti_aliasing=True)
+        else:
+            image_resized = images[i]
         
-        # Transposing make [1, 28,28] as feeded to network
-        images_reized_l.append(image_resized.T)
-        
-        grid = tvutils.make_grid(torch.from_numpy(image_resized.reshape(28,28)))
-        writer.add_image('resized_images', grid, i+1)
+        im = image_resized/255
+        mean += np.mean(im[:,:,0])
+
+        images_reized_l.append(image_resized)
+
     print(len(images_reized_l))
     
     print(np.array(images_reized_l).shape)
@@ -87,10 +97,52 @@ def getDataset():
     labels.shape
     print("Labels shape",labels.shape)
     
-    dataset = affNISTData(np.array(images_reized_l),labels)
+    resized_images = np.array(images_reized_l)
+
+
+    mean = mean/resized_images.shape[0]
+
+    #  calculate std
+    stdTemp = 0.0
+    std = 0.0
+    for i in range(0, len(resized_images)):
+
+        im = resized_images[i]/255
+        stdTemp += ((im[:,:,0] - mean)**2).sum()/(im.shape[0]*im.shape[1])
+
+    std = np.sqrt(stdTemp/len(resized_images))
+
+    print("Mean :", mean)
+    print("Std : ", std)
+
+    # TODO: Check if Resize function can be used, nedd PIL image
+    transform=transforms.Compose([
+            #transforms.Resize((28,28)),
+            transforms.ToTensor(),
+            transforms.Normalize((mean,), (std,))
+            ])
+
+    #if isResized == True:
+    dataset = affNISTData(resized_images,labels, transform)
+    #else:
+     #   dataset = affNISTData(images,labels)
     
     return dataset
 
 if __name__ == '__main__':
     
-    print(getDataset())
+    # Tensorboard
+    writer = SummaryWriter('runs/capsule_affnist_eval')
+
+    data = getDataset(False)
+
+    for i in range(1,50):
+        image = data.__getitem__(i)[0]
+
+        print(image.size())
+
+        grid = tvutils.make_grid(image)
+        writer.add_image('resized_images', grid, i)
+
+    writer.flush()
+    writer.close()

@@ -147,8 +147,8 @@ def main(rank, world_size, batch_size, num_epochs, learning_rate, model_path, nu
         if test_accuracy == max(test_acc_l):
             best_epoch = epoch + 1
 
-        # Saving the model
-        torch.save(network.state_dict(), model_path + str(epoch+1) + ".pt")
+            # Saving the model with best test accuracy till current epoch
+            torch.save(network.state_dict(), model_path +"caps_net_mnist_" + str(num_epochs) + "_"+ str(epoch+1) + ".pt")
 
 
     writer.flush()
@@ -164,6 +164,7 @@ def main(rank, world_size, batch_size, num_epochs, learning_rate, model_path, nu
     dataParallel.cleanup()
     
 import torch.multiprocessing as mp
+import os
 if __name__ == '__main__':
     
     # Control variables
@@ -171,7 +172,10 @@ if __name__ == '__main__':
     num_epochs = int(sys.argv[2])
     learning_rate = 1e-3
     num_exp = int(sys.argv[3])
-    model_path = "saved_model/250_e/caps_net_mnist_" + str(num_epochs) + "_"
+    model_path = "saved_model/caps_mnist/"
+
+    if os.path.exists(model_path) == False:
+        os.mkdir(model_path)
     
     # Put no. of GPU's used
     world_size = 2
