@@ -74,7 +74,7 @@ if __name__ == '__main__':
         model_path = "saved_model/best_models/cnn_mnist/cnn_mnist_100_100.pt"
     elif model_arch == 3:
         # Caps Net Shifted MNIST model
-        model_path = "saved_model/best_models/caps_shifted_mnist/caps_net_shifted_mnist_30_26.pt"
+        model_path = "saved_model/best_models/caps_shifted_mnist/caps_net_shifted_mnist_250_161.pt"
         isResized = False
     elif model_arch == 4:
         # CNN Shifted MNIST model

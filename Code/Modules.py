@@ -22,6 +22,9 @@ from prettytable import PrettyTable
 import numpy as np
 
 class Squash():
+    '''
+    Like a activation function but performed on whole layer output and not neuron/element wise
+    '''
     
     def __init__(self, epsilon=1e-8):
         self.epsilon = epsilon
@@ -35,7 +38,21 @@ class Squash():
 class Routing(nn.Module):
     
     def __init__(self, in_caps: int, out_caps: int, in_d: int, out_d: int, iterations: int):
-        
+
+        '''
+        params
+        in_caps : Input from previvous layer reshaped to form capsules, 32*8 channels divided in 2 parts
+        32 as number of capsules (6*6*32) and 8 as input dimension
+
+        out_caps : 10 for every class
+
+        in_d : imput dimension (8)
+
+        out_d : output dimension (length of each vector of output class)
+
+        iterations : routing loop iterations
+        '''
+
         super(Routing,self).__init__()
 
         #Intitialization with parameters required for routing
@@ -52,7 +69,8 @@ class Routing(nn.Module):
     def perform(self, u):
         
         self.weight = self.weight.to(u.device)
-        
+
+        # Prediction Vectors (Sumed over input dimentions)
         u_hat = torch.einsum('ijnm,bin->bijm', self.weight, u)
         
         b = u.new_zeros(u.shape[0], self.in_caps, self.out_caps)
@@ -62,6 +80,7 @@ class Routing(nn.Module):
         for i in range(self.iterations):
             
             c = self.softmax(b)
+            # Weighted sum over pridiction vectors
             s = torch.einsum('bij,bijm->bjm', c, u_hat)
             v = self.squash.perform(s)
             # agreement
@@ -74,7 +93,16 @@ class Routing(nn.Module):
 class MarginLoss():
     
     def __init__(self, *, n_labels: int, lambda_: float = 0.5, m_positive: float = 0.9, m_negative: float = 0.1):
+
+        '''
+        params
         
+        n_labels : Totals classes
+        lambda_ : Use to decrease loss if wrong result so that training is not affected in start
+        m_positive : weight of positive loss
+        m_negative : weight of negative loss
+        '''
+
         self.m_negative = m_negative
         self.m_positive = m_positive
         self.lambda_ = lambda_

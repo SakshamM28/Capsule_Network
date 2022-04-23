@@ -72,7 +72,7 @@ def getDataset(isResized=False):
     #max_val , min_val = images.max(), images.min() # 255 , 0
     #print(max_val, min_val)
 
-    mean = 0.0
+    #mean = 0.0
 
     images_reized_l = []
     for i in range(0, len(images)):
@@ -82,8 +82,8 @@ def getDataset(isResized=False):
         else:
             image_resized = images[i]
         
-        im = image_resized/255
-        mean += np.mean(im[:,:,0])
+        #im = image_resized/255
+        #mean += np.mean(im[:,:,0])
 
         images_reized_l.append(image_resized)
 
@@ -99,7 +99,7 @@ def getDataset(isResized=False):
     
     resized_images = np.array(images_reized_l)
 
-
+    '''
     mean = mean/resized_images.shape[0]
 
     #  calculate std
@@ -114,12 +114,13 @@ def getDataset(isResized=False):
 
     print("Mean :", mean)
     print("Std : ", std)
+    '''
 
     # TODO: Check if Resize function can be used, nedd PIL image
     transform=transforms.Compose([
             #transforms.Resize((28,28)),
             transforms.ToTensor(),
-            transforms.Normalize((mean,), (std,))
+            transforms.Normalize((0.1307,), (0.3081,))
             ])
 
     #if isResized == True:
