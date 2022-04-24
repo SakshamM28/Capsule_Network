@@ -164,6 +164,7 @@ def main(rank, world_size, batch_size, num_epochs, learning_rate, model_path, nu
     dataParallel.cleanup()
     
 import torch.multiprocessing as mp
+import os
 if __name__ == '__main__':
     
     # Control variables
@@ -172,7 +173,10 @@ if __name__ == '__main__':
     learning_rate = 1e-3
     num_exp = int(sys.argv[3])
     model_path = "saved_model/cnn_shifted_mnist/"
-    
+
+    if os.path.exists(model_path) == False:
+        os.mkdir(model_path)
+
     # Put no. of GPU's used
     world_size = 2
     mp.spawn(

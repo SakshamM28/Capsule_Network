@@ -132,59 +132,59 @@ class Helper():
         # Compute accuracy on training set
         count = 0
         train_running_loss = 0.0
-        for batch_idx, (data, target) in enumerate(train_loader):
-            
-            if isShiftedMNIST == True:
-                data = self.transformData(data, batch_size)
-            
-            data = data.to(dev)
-            target = target.to(dev)
-            
-            preds = network.forward(data)
-            _, pred = torch.max(preds, dim=1)
-            count += torch.sum(pred == target).detach().item()
-            
-            batch_loss = self.cost(preds, target)
-            
-            train_running_loss += batch_loss.item()
-            
-            # Logging reconstructed images
-            #grid = tvutils.make_grid(reconstructions)
-            #writer.add_image('train_images', grid, (epoch+1))
+        with torch.no_grad():
+            for batch_idx, (data, target) in enumerate(train_loader):
+
+                if isShiftedMNIST == True:
+                    data = self.transformData(data, batch_size)
+
+                data = data.to(dev)
+                target = target.to(dev)
+
+                preds = network.forward(data)
+                _, pred = torch.max(preds, dim=1)
+                count += torch.sum(pred == target).detach().item()
+
+                batch_loss = self.cost(preds, target)
+                train_running_loss += batch_loss.item()
+
+                # Logging reconstructed images
+                #grid = tvutils.make_grid(reconstructions)
+                #writer.add_image('train_images', grid, (epoch+1))
 
         train_loss = train_running_loss / train_loader.dataset.data.size(0)
-            
+
         train_accuracy = float(count) / train_loader.dataset.data.size(0)
 
         # Compute accuracy on test set
         count = 0
         test_running_loss = 0.0
-        
+
         with torch.no_grad():
             for batch_idx, (data, target) in enumerate(test_loader):
-                
+
                 if isShiftedMNIST == True:
                     data = self.transformData(data, batch_size)
-                
+
                 data = data.to(dev)
                 target = target.to(dev)
-                
+
                 preds = network.forward(data)
                 _, pred = torch.max(preds, dim=1)
                 count += torch.sum(pred == target).detach().item()
-                
+
                 batch_loss = self.cost(preds, target)
                 #print('Test Batch Loss:', batch_loss.item()/ data.size(0) )
                 test_running_loss += batch_loss.item()
-                
+
                 #grid = tvutils.make_grid(reconstructions)
                 #writer.add_image('test_images', grid, (epoch+1))
-            
+
         test_loss = test_running_loss / test_loader.dataset.data.size(0)
 
         test_accuracy = float(count) / test_loader.dataset.data.size(0)
         print('Test Accuracy:', test_accuracy)
         print('Test Loss:', test_loss)
-        
+
         return train_accuracy, test_accuracy, train_loss, test_loss
 
