@@ -142,6 +142,7 @@ if __name__ == '__main__':
 
         print(image.size())
 
+        image = image * 0.3081 + 0.1307
         grid = tvutils.make_grid(image)
         writer.add_image('resized_images', grid, i)
 
