@@ -92,7 +92,7 @@ def main(batch_size, num_epochs, learning_rate, model_path, num_exp, max_words, 
     
     print(helper.count_parameters(network))
 
-    optimizer = optim.Adam(network.parameters(), lr=learning_rate)
+    optimizer = optim.Adam(network.parameters(), lr=learning_rate, weight_decay = 0.1)
     lr_scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.96)
 
     train_acc_l = []
@@ -174,6 +174,6 @@ if __name__ == '__main__':
 
     #TODO : Preprocess data to find suitable max words per sentence
     max_words = 200
-    embed_len = 100
+    embed_len = 300
     
     main(batch_size, num_epochs, learning_rate, model_path, num_exp, max_words, embed_len)
