@@ -68,17 +68,17 @@ if __name__ == '__main__':
 
     if model_arch == 1:
         # Caps Net MNIST model
-        model_path = "saved_model/best_models/caps_mnist/caps_net_mnist_250_75.pt"
+        model_path = "./Git/Capsule_Network/Code/saved_model/best_models/caps_mnist/caps_net_mnist_250_75.pt"
     elif model_arch == 2:
         # CNN MNIST model
-        model_path = "saved_model/best_models/cnn_mnist/cnn_mnist_100_100.pt"
+        model_path = "./Git/Capsule_Network/Code/saved_model/best_models/cnn_mnist/cnn_mnist_100_100.pt"
     elif model_arch == 3:
         # Caps Net Shifted MNIST model
-        model_path = "saved_model/best_models/caps_shifted_mnist/caps_net_shifted_mnist_250_161.pt"
+        model_path = "./Git/Capsule_Network/Code/saved_model/best_models/caps_shifted_mnist/caps_net_shifted_mnist_250_161.pt"
         isResized = False
     elif model_arch == 4:
         # CNN Shifted MNIST model
-        model_path = "saved_model/best_models/cnn_shifted_mnist/cnn_shifted_mnist_100_82.pt"
+        model_path = "./Git/Capsule_Network/Code/saved_model/best_models/cnn_shifted_mnist/cnn_shifted_mnist_100_82.pt"
         isResized = False
 
 

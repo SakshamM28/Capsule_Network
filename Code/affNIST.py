@@ -44,7 +44,6 @@ class affNISTData(torch.utils.data.Dataset):
 def getDataset(isResized=False):
 
     # Test data URL
-
     test_URL = "https://www.cs.toronto.edu/~tijmen/affNIST/32x/transformed/test.mat.zip"
     data_dir = "./Data/affNIST/"
     
@@ -64,15 +63,10 @@ def getDataset(isResized=False):
     data_path = os.path.join(data_dir, file_name)
     
     data = sio.loadmat(data_path)
-    
-    
-    images = np.stack(data['affNISTdata']['image'].ravel()).transpose().reshape(-1,40,40,1).astype(np.float32)
-    print("Images shape",images.shape)
-    
-    #max_val , min_val = images.max(), images.min() # 255 , 0
-    #print(max_val, min_val)
+    print(data)
 
-    #mean = 0.0
+    images = np.stack(data['affNISTdata']['image'].ravel()).transpose().reshape(-1,40,40,1)
+    print("Images shape",images.shape)
 
     images_reized_l = []
     for i in range(0, len(images)):
@@ -81,9 +75,6 @@ def getDataset(isResized=False):
             image_resized = resize(images[i], (28, 28 ),anti_aliasing=True)
         else:
             image_resized = images[i]
-        
-        #im = image_resized/255
-        #mean += np.mean(im[:,:,0])
 
         images_reized_l.append(image_resized)
 
@@ -99,23 +90,6 @@ def getDataset(isResized=False):
     
     resized_images = np.array(images_reized_l)
 
-    '''
-    mean = mean/resized_images.shape[0]
-
-    #  calculate std
-    stdTemp = 0.0
-    std = 0.0
-    for i in range(0, len(resized_images)):
-
-        im = resized_images[i]/255
-        stdTemp += ((im[:,:,0] - mean)**2).sum()/(im.shape[0]*im.shape[1])
-
-    std = np.sqrt(stdTemp/len(resized_images))
-
-    print("Mean :", mean)
-    print("Std : ", std)
-    '''
-
     # TODO: Check if Resize function can be used, nedd PIL image
     transform=transforms.Compose([
             #transforms.Resize((28,28)),
@@ -123,10 +97,7 @@ def getDataset(isResized=False):
             transforms.Normalize((0.1307,), (0.3081,))
             ])
 
-    #if isResized == True:
-    dataset = affNISTData(resized_images,labels, transform)
-    #else:
-     #   dataset = affNISTData(images,labels)
+    dataset = affNISTData(resized_images, labels, transform)
     
     return dataset
 
@@ -142,6 +113,7 @@ if __name__ == '__main__':
 
         print(image.size())
 
+        image = image * 0.3081 + 0.1307
         grid = tvutils.make_grid(image)
         writer.add_image('resized_images', grid, i)
 
