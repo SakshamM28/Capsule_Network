@@ -44,7 +44,7 @@ class Routing(nn.Module):
         in_caps : Input from previvous layer reshaped to form capsules, 32*8 channels divided in 2 parts
         32 as number of capsules (6*6*32) and 8 as input dimension
 
-        out_caps : 10 for every class
+        out_caps : 10 - 1 for every class
 
         in_d : imput dimension (8)
 

@@ -24,7 +24,8 @@ class DatasetHelper():
         else:
             split = 'test'
         
-        return to_map_style_dataset(datasets.IMDB(split = split) )
+        #return to_map_style_dataset(datasets.IMDB(root='./Data/IMDB/' ,split = split) )
+        return to_map_style_dataset(datasets.IMDB(root='/scratch/sakshamgoyal/' ,split = split) )
 
 class Helper():
     
@@ -35,12 +36,14 @@ class Helper():
         '''
         
         self.tokenizer = get_tokenizer("basic_english")
-        self.loss = nn.NLLLoss()
+        self.loss = nn.NLLLoss(reduction='sum')
         self.max_words = max_words
         self.embed_len = embed_len
         
         # Load Pretrained GloVe embeddings
-        self.glove = vocab.GloVe(name='6B', dim=100)
+        #self.glove = vocab.GloVe(name='6B', dim=self.embed_len, cache = './Data/GloVE/')
+        #self.glove = vocab.GloVe(name='6B', dim=self.embed_len, cache = '/scratch/sakshamgoyal/')
+        self.glove = vocab.GloVe(name='840B', dim=self.embed_len, cache = '/scratch/sakshamgoyal/')
         
     def cost(self, predictions: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
         """
@@ -61,6 +64,7 @@ class Helper():
         X = [tokens+[""] * (self.max_words-len(tokens))  if len(tokens) < self.max_words else tokens[: self.max_words] for tokens in X]
         X_tensor = torch.zeros(len(batch), self.max_words, self.embed_len)
         for i, tokens in enumerate(X):
+            #TODO Lower case lookup can be checked
             X_tensor[i] = self.glove.get_vecs_by_tokens(tokens)
         
         Y = [int(y == 'pos')  for y in Y]
@@ -86,8 +90,8 @@ class Helper():
         else:
             dev = torch.device("cpu")
             
-        train_loader = torch.utils.data.DataLoader(DatasetHelper.getIMDBDataSet(True), batch_size=512, shuffle=True, collate_fn=self.vectorize_batch)
-        test_loader  = torch.utils.data.DataLoader(DatasetHelper.getIMDBDataSet(False), batch_size=512, shuffle=True, collate_fn=self.vectorize_batch)
+        train_loader = torch.utils.data.DataLoader(DatasetHelper.getIMDBDataSet(True), batch_size=batch_size, shuffle=True, collate_fn=self.vectorize_batch)
+        test_loader  = torch.utils.data.DataLoader(DatasetHelper.getIMDBDataSet(False), batch_size=batch_size, shuffle=True, collate_fn=self.vectorize_batch)
         
         network.to(dev)
         network.eval()
