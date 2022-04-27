@@ -179,7 +179,7 @@ if __name__ == '__main__':
     model_path = "saved_model/caps_mnist/"
 
     if os.path.exists(model_path) == False:
-        os.mkdir(model_path)
+        os.mkdirs(model_path)
     
     # Put no. of GPU's used
     world_size = 2
