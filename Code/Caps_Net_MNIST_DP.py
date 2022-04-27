@@ -94,7 +94,7 @@ def main(rank, world_size, batch_size, num_epochs, learning_rate, model_path, nu
     if rank == 0:
         table, total_params = helper.count_parameters(network)
         print(table)
-        print(total_params)
+        print('Total trainable parameters: ', total_params)
 
     optimizer = optim.Adam(network.parameters(), lr=learning_rate)
     lr_scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.96)
@@ -170,10 +170,11 @@ def main(rank, world_size, batch_size, num_epochs, learning_rate, model_path, nu
 
 
     # Display Max Accuracy
-    print('Training completed!')
-    print('Max Train Accuracy : ', max(train_acc_l))
-    print('Max Test Accuracy : ', max(test_acc_l))
-    print('Best Test Accuracy epoch: ', best_epoch)
+    if rank == 0:
+        print('Training completed!')
+        print('Max Train Accuracy : ', max(train_acc_l))
+        print('Max Test Accuracy : ', max(test_acc_l))
+        print('Best Test Accuracy epoch: ', best_epoch)
     
     
     dataParallel.cleanup()
