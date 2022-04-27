@@ -277,7 +277,7 @@ class Helper():
                     grid = tvutils.make_grid(reconstructions[1, :, :, :])
                     writer.add_image('train_recons_images', grid, (epoch+1))
 
-                    grid = tvutils.make_grid(data[1, :, :, :])
+                    grid = tvutils.make_grid(data[1, :, :, :] * 0.3081 + 0.1307)
                     writer.add_image('train_images', grid, (epoch + 1))
 
         train_loss = train_running_loss / train_loader.dataset.data.size(0)
