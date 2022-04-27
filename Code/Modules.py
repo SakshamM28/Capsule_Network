@@ -251,9 +251,10 @@ class Helper():
 
                 train_running_loss += batch_loss.item()
 
-                # Logging reconstructed images
-                grid = tvutils.make_grid(reconstructions)
-                writer.add_image('train_recons_images', grid, (epoch+1))
+                if rank == 0:
+                    # Logging reconstructed images
+                    grid = tvutils.make_grid(reconstructions)
+                    writer.add_image('train_recons_images', grid, (epoch+1))
 
         train_loss = train_running_loss / train_loader.dataset.data.size(0)
         train_accuracy = float(count) / train_loader.dataset.data.size(0)
@@ -278,8 +279,9 @@ class Helper():
                 batch_loss = self.cost(caps, target, reconstructions, data, True)
                 test_running_loss += batch_loss.item()
 
-                grid = tvutils.make_grid(reconstructions)
-                writer.add_image('test_recons_images', grid, (epoch+1))
+                if rank == 0:
+                    grid = tvutils.make_grid(reconstructions)
+                    writer.add_image('test_recons_images', grid, (epoch+1))
 
         test_loss = test_running_loss / test_loader.dataset.data.size(0)
         test_accuracy = float(count) / test_loader.dataset.data.size(0)

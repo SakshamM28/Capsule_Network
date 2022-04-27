@@ -62,11 +62,15 @@ class MNISTCapsuleNetworkModel(nn.Module):
         
         return caps, reconstructions, pred
     
-def main(rank, world_size, batch_size, num_epochs, learning_rate, model_path, num_exp, writer):
+def main(rank, world_size, batch_size, num_epochs, learning_rate, model_path, num_exp):
     
     print(rank, world_size, batch_size, num_epochs, learning_rate, model_path, num_exp)
     
     helper = Helper()
+
+    if rank == 0:
+        # Tensorboard
+        writer = SummaryWriter('runs/capsule_mnist_experiment_' + str(num_epochs) + "_" + str(num_exp))
 
     # Data Parallelism for Multiple GPU
     dataParallel = DataParallel()
@@ -130,15 +134,16 @@ def main(rank, world_size, batch_size, num_epochs, learning_rate, model_path, nu
               '\tTesting Accuracy:', '{:10.5f}'.format(test_accuracy),
               '\tTesting Loss:', '{:10.5f}'.format(test_loss))
 
-        # Log LR
-        writer.add_scalar(str(rank)+': learning rate', lr_scheduler.get_last_lr()[0], (epoch + 1))
-        # log the training loss
-        writer.add_scalar(str(rank)+': training epoch loss', train_loss, (epoch+1))
-        # log the evaluation loss
-        writer.add_scalar(str(rank)+': evaluation epoch loss', test_loss, (epoch+1))
-        # log accuracies
-        writer.add_scalar(str(rank)+': Training epoch Accuracy', train_accuracy, (epoch+1))
-        writer.add_scalar(str(rank)+': Testing epoch Accuracy', test_accuracy, (epoch+1))
+        if rank == 0:
+            # Log LR
+            writer.add_scalar(str(rank)+': learning rate', lr_scheduler.get_last_lr()[0], (epoch + 1))
+            # log the training loss
+            writer.add_scalar(str(rank)+': training epoch loss', train_loss, (epoch+1))
+            # log the evaluation loss
+            writer.add_scalar(str(rank)+': evaluation epoch loss', test_loss, (epoch+1))
+            # log accuracies
+            writer.add_scalar(str(rank)+': Training epoch Accuracy', train_accuracy, (epoch+1))
+            writer.add_scalar(str(rank)+': Testing epoch Accuracy', test_accuracy, (epoch+1))
         
         train_acc_l.append(train_accuracy)
         test_acc_l.append(test_accuracy)
@@ -149,9 +154,9 @@ def main(rank, world_size, batch_size, num_epochs, learning_rate, model_path, nu
             # Saving the model with best test accuracy till current epoch
             torch.save(network.state_dict(), model_path + 'caps_net_mnist_' + str(num_epochs) + "_"+ str(epoch+1) + ".pt")
 
-
-    writer.flush()
-    writer.close()
+    if rank == 0:
+        writer.flush()
+        writer.close()
 
 
     # Display Max Accuracy
@@ -178,15 +183,12 @@ if __name__ == '__main__':
 
     model_path = 'saved_model/caps_mnist/'
     Path(model_path).mkdir(parents=True, exist_ok=True)
-
-    # Tensorboard
-    writer = SummaryWriter('runs/capsule_mnist_experiment_' + str(num_epochs) + "_" + str(num_exp))
     
     # Put no. of GPU's used
     world_size = 2
     mp.spawn(
         main,
-        args=(world_size, batch_size, num_epochs, learning_rate, model_path, num_exp, writer),
+        args=(world_size, batch_size, num_epochs, learning_rate, model_path, num_exp),
         nprocs=world_size
     )
     
