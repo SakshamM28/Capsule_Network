@@ -208,7 +208,7 @@ class Helper():
         # print(np.shape(padded_data_numpy))
         random_shifts = np.random.randint(-shift, shift + 1, (batch_size, 2))
         shifted_padded_data_numpy = self.shift_2d(padded_data_numpy, random_shifts, max_shift=max_shift)
-        # print(np.shape(shifted_padded_data_numpy))
+        # print('Data shape after transformation: ', np.shape(shifted_padded_data_numpy))
         data = torch.from_numpy(shifted_padded_data_numpy)
         # redo normalization
         data = (data - 0.1307) / 0.3081
@@ -229,7 +229,7 @@ class Helper():
         data_numpy = data.cpu().detach().numpy()
         random_shifts = np.random.randint(-shift, shift + 1, (batch_size, 2))
         shifted_data_numpy = self.shift_2d(data_numpy, random_shifts, max_shift=max_shift)
-        print('Data shape after transformation: ', np.shape(shifted_data_numpy))
+        #print('Data shape after transformation: ', np.shape(shifted_data_numpy))
         data = torch.from_numpy(shifted_data_numpy)
         # redo normalization
         data = (data - 0.1307) / 0.3081
@@ -300,9 +300,10 @@ class Helper():
                 batch_loss = self.cost(caps, target, reconstructions, data, True)
                 test_running_loss += batch_loss.item()
 
-                #if rank == 0:
-                #    grid = tvutils.make_grid(reconstructions)
-                #    writer.add_image('test_recons_images', grid, (epoch+1))
+                if rank == 0:
+                    # Logging reconstructed images, only 1 image from the batch to save memory
+                    grid = tvutils.make_grid(reconstructions[1,:,:,:])
+                    writer.add_image('test_recons_images', grid, (epoch+1))
 
         test_loss = test_running_loss / test_loader.dataset.data.size(0)
         test_accuracy = float(count) / test_loader.dataset.data.size(0)
