@@ -260,7 +260,7 @@ class Helper():
             for batch_idx, (data, target) in enumerate(train_loader):
 
                 if isShiftedMNIST == True:
-                    data = self.transformData(data, batch_size)
+                    data = self.transformData_ShiftedMNIST(data, batch_size)
 
                 data = data.to(dev)
                 target = target.to(dev)
@@ -292,7 +292,7 @@ class Helper():
             for batch_idx, (data, target) in enumerate(test_loader):
 
                 if isShiftedMNIST == True:
-                    data = self.transformData(data, batch_size)
+                    data = self.transformData_ShiftedMNIST(data, batch_size)
 
                 data = data.to(dev)
                 target = target.to(dev)
