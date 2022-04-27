@@ -40,9 +40,7 @@ class ShiftedMNISTCapsuleNetworkModel(nn.Module):
             nn.ReLU(),
             nn.Linear(512, 1024),
             nn.ReLU(),
-            nn.Linear(1024, 2048),
-            nn.ReLU(),
-            nn.Linear(2048, 1600),
+            nn.Linear(1024, 1600),
             nn.Sigmoid()
         )
         

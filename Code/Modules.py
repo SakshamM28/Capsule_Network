@@ -217,7 +217,7 @@ class Helper():
         return data
 
 
-    def evaluate(self, network, epoch, batch_size,writer,rank=None, isShiftedMNIST=False):
+    def evaluate(self, network, epoch, batch_size, writer, rank=None, isShiftedMNIST=False):
 
         if rank:
             dev = rank
@@ -252,12 +252,12 @@ class Helper():
                 train_running_loss += batch_loss.item()
 
                 # Logging reconstructed images
-                #grid = tvutils.make_grid(reconstructions)
-                #writer.add_image('train_images', grid, (epoch+1))
+                grid = tvutils.make_grid(reconstructions)
+                writer.add_image('train_recons_images', grid, (epoch+1))
 
         train_loss = train_running_loss / train_loader.dataset.data.size(0)
-
         train_accuracy = float(count) / train_loader.dataset.data.size(0)
+
 
         # Compute accuracy on test set
         count = 0
@@ -276,17 +276,13 @@ class Helper():
                 count += torch.sum(preds == target).detach().item()
 
                 batch_loss = self.cost(caps, target, reconstructions, data, True)
-                #print('Test Batch Loss:', batch_loss.item()/ data.size(0) )
                 test_running_loss += batch_loss.item()
 
-                #grid = tvutils.make_grid(reconstructions)
-                #writer.add_image('test_images', grid, (epoch+1))
+                grid = tvutils.make_grid(reconstructions)
+                writer.add_image('test_recons_images', grid, (epoch+1))
 
         test_loss = test_running_loss / test_loader.dataset.data.size(0)
-
         test_accuracy = float(count) / test_loader.dataset.data.size(0)
-        print('Test Accuracy:', test_accuracy)
-        print('Test Loss:', test_loss)
 
         return train_accuracy, test_accuracy, train_loss, test_loss
         
