@@ -81,16 +81,20 @@ def main(rank, world_size, batch_size, num_epochs, learning_rate, model_path, nu
 
     ## Load Full Test data for evaluation
     test_loader = torch.utils.data.DataLoader(DatasetHelper.getDataSet(False), batch_size=batch_size)
-    
-    print('Training dataset size: ', train_loader.dataset.data.size(0))
-    print('Test dataset size: ', test_loader.dataset.data.size(0))
+
+    if rank == 0:
+        print('Training dataset size: ', train_loader.dataset.data.size(0))
+        print('Test dataset size: ', test_loader.dataset.data.size(0))
 
     # Set up the network and optimizer
     network = MNISTCapsuleNetworkModel()
     network.to(rank)
     network= DDP(network, device_ids=[rank], output_device=rank, find_unused_parameters=True)
 
-    print(helper.count_parameters(network))
+    if rank == 0:
+        table, total_params = helper.count_parameters(network)
+        print(table)
+        print(total_params)
 
     optimizer = optim.Adam(network.parameters(), lr=learning_rate)
     lr_scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.96)
@@ -105,6 +109,8 @@ def main(rank, world_size, batch_size, num_epochs, learning_rate, model_path, nu
 
         network.train()
         for batch_idx, (data, target) in enumerate(train_loader):
+            # apply upto 2 pixel shift in each direction with zero padding
+            data = helper.transformData_MNIST(data, batch_size)
 
             data = data.to(rank)
             target = target.to(rank)
@@ -130,12 +136,12 @@ def main(rank, world_size, batch_size, num_epochs, learning_rate, model_path, nu
         else:
             train_accuracy, test_accuracy, train_loss, test_loss = helper.evaluate(network, epoch, batch_size, None, rank)
 
-        print('Rank: ', rank,
-              'Epoch:', '{:3d}'.format(epoch + 1),
-              '\tTraining Accuracy:', '{:10.5f}'.format(train_accuracy),
-              '\tTraining Loss:', '{:10.5f}'.format(train_loss),
-              '\tTesting Accuracy:', '{:10.5f}'.format(test_accuracy),
-              '\tTesting Loss:', '{:10.5f}'.format(test_loss))
+        if rank == 0:
+            print('Epoch:', '{:3d}'.format(epoch + 1),
+                  '\tTraining Accuracy:', '{:10.5f}'.format(train_accuracy),
+                  '\tTraining Loss:', '{:10.5f}'.format(train_loss),
+                  '\tTesting Accuracy:', '{:10.5f}'.format(test_accuracy),
+                  '\tTesting Loss:', '{:10.5f}'.format(test_loss))
 
         if rank == 0:
             # Log LR

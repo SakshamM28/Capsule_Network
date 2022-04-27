@@ -107,7 +107,7 @@ def main(rank, world_size, batch_size, num_epochs, learning_rate, model_path, nu
         for batch_idx, (data, target) in enumerate(train_loader):
 
             # Conver mnist to Shifted mnist
-            data = helper.transformData(data, batch_size)
+            data = helper.transformData_ShiftedMNIST(data, batch_size)
 
             data = data.to(rank)
             target = target.to(rank)

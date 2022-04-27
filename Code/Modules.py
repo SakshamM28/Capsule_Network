@@ -163,9 +163,9 @@ class Helper():
             params = parameter.numel()
             table.add_row([name, params])
             total_params+=params
-        print(table)
-        print(f"Total Trainable Params: {total_params}")
-        return total_params
+        #print(table)
+        #print(f"Total Trainable Params: {total_params}")
+        return table, total_params
 
 
     def cost(self, caps: torch.Tensor, targets: torch.Tensor, reconstructions: torch.Tensor, data: torch.Tensor, isReconstruction = False) -> torch.Tensor:
@@ -192,7 +192,7 @@ class Helper():
         shifted_image = rolled_image[:, :, max_shift:-max_shift, max_shift:-max_shift]
         return shifted_image
 
-    def transformData(self, data, batch_size):
+    def transformData_ShiftedMNIST(self, data, batch_size):
 
         '''
         This function is used to transform MNIST data to 40x40 by padding and randomly shifting
@@ -207,12 +207,32 @@ class Helper():
         padded_data_numpy = np.pad(data_numpy, ((0, 0), (0, 0), (6, 6), (6, 6)), 'constant')
         # print(np.shape(padded_data_numpy))
         random_shifts = np.random.randint(-shift, shift + 1, (batch_size, 2))
-        shifted_padded_data_numpy = self.shift_2d(padded_data_numpy, random_shifts, max_shift=6)
+        shifted_padded_data_numpy = self.shift_2d(padded_data_numpy, random_shifts, max_shift=max_shift)
         # print(np.shape(shifted_padded_data_numpy))
         data = torch.from_numpy(shifted_padded_data_numpy)
         # redo normalization
         data = (data - 0.1307) / 0.3081
-        #print('Input data shape: ', data.shape)
+
+        return data
+
+    def transformData_MNIST(self, data, batch_size):
+
+        '''
+        Simialr to original CapsNet paper, this function is used to apply shift upto 2 pixels in each direction with zero padding
+        '''
+
+        # undo normalization
+        data = data * 0.3081 + 0.1307
+        # transformations for shifted MNIST
+        shift, max_shift = 2, 2
+        # print(data.shape)
+        data_numpy = data.cpu().detach().numpy()
+        random_shifts = np.random.randint(-shift, shift + 1, (batch_size, 2))
+        shifted_data_numpy = self.shift_2d(data_numpy, random_shifts, max_shift=max_shift)
+        print('Data shape after transformation: ', np.shape(shifted_data_numpy))
+        data = torch.from_numpy(shifted_data_numpy)
+        # redo normalization
+        data = (data - 0.1307) / 0.3081
 
         return data
 
@@ -222,8 +242,9 @@ class Helper():
         if rank:
             dev = rank
         elif torch.cuda.is_available():
-            print("GPU available")
             dev = torch.device("cuda")
+            if rank == 0:
+                print("GPU available")
         else:
             dev = torch.device("cpu")
 
@@ -251,10 +272,10 @@ class Helper():
 
                 train_running_loss += batch_loss.item()
 
-                if rank == 0:
-                    # Logging reconstructed images
-                    grid = tvutils.make_grid(reconstructions)
-                    writer.add_image('train_recons_images', grid, (epoch+1))
+                #if rank == 0:
+                #    # Logging reconstructed images
+                #    grid = tvutils.make_grid(reconstructions)
+                #    writer.add_image('train_recons_images', grid, (epoch+1))
 
         train_loss = train_running_loss / train_loader.dataset.data.size(0)
         train_accuracy = float(count) / train_loader.dataset.data.size(0)
@@ -279,9 +300,9 @@ class Helper():
                 batch_loss = self.cost(caps, target, reconstructions, data, True)
                 test_running_loss += batch_loss.item()
 
-                if rank == 0:
-                    grid = tvutils.make_grid(reconstructions)
-                    writer.add_image('test_recons_images', grid, (epoch+1))
+                #if rank == 0:
+                #    grid = tvutils.make_grid(reconstructions)
+                #    writer.add_image('test_recons_images', grid, (epoch+1))
 
         test_loss = test_running_loss / test_loader.dataset.data.size(0)
         test_accuracy = float(count) / test_loader.dataset.data.size(0)
