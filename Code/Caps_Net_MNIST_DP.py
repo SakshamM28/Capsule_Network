@@ -125,7 +125,10 @@ def main(rank, world_size, batch_size, num_epochs, learning_rate, model_path, nu
         lr_scheduler.step()
         
         # Calculate accuracies on whole dataset
-        train_accuracy, test_accuracy, train_loss, test_loss= helper.evaluate(network, epoch, batch_size, writer, rank)
+        if rank == 0:
+            train_accuracy, test_accuracy, train_loss, test_loss= helper.evaluate(network, epoch, batch_size, writer, rank)
+        else:
+            train_accuracy, test_accuracy, train_loss, test_loss = helper.evaluate(network, epoch, batch_size, None, rank)
 
         print('Rank: ', rank,
               'Epoch:', '{:3d}'.format(epoch + 1),

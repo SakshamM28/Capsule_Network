@@ -217,7 +217,7 @@ class Helper():
         return data
 
 
-    def evaluate(self, network, epoch, batch_size, writer, rank=None, isShiftedMNIST=False):
+    def evaluate(self, network, epoch, batch_size, writer=None, rank=None, isShiftedMNIST=False):
 
         if rank:
             dev = rank
