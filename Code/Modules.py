@@ -272,10 +272,10 @@ class Helper():
 
                 train_running_loss += batch_loss.item()
 
-                if rank == 0:
+                #if rank == 0:
                     # Logging reconstructed images, only 1 image from the batch to save memory
-                    grid = tvutils.make_grid(reconstructions[1, :, :, :])
-                    writer.add_image('train_recons_images', grid, (epoch+1))
+                    #grid = tvutils.make_grid(reconstructions[1, :, :, :])
+                    #writer.add_image('train_recons_images', grid, (epoch+1))
 
         train_loss = train_running_loss / train_loader.dataset.data.size(0)
         train_accuracy = float(count) / train_loader.dataset.data.size(0)
