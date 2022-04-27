@@ -162,7 +162,7 @@ def main(rank, world_size, batch_size, num_epochs, learning_rate, model_path, nu
             best_epoch = epoch + 1
 
             # Saving the model with best test accuracy till current epoch
-            torch.save(network.state_dict(), model_path + 'caps_net_mnist_' + str(num_epochs) + "_"+ str(epoch+1) + ".pt")
+            torch.save(network.state_dict(), model_path + 'caps_net_mnist_' + str(num_epochs) + '_'+ str(epoch+1) + '.pt')
 
     if rank == 0:
         writer.flush()
