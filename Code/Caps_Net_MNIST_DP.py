@@ -62,14 +62,11 @@ class MNISTCapsuleNetworkModel(nn.Module):
         
         return caps, reconstructions, pred
     
-def main(rank, world_size, batch_size, num_epochs, learning_rate, model_path, num_exp):
+def main(rank, world_size, batch_size, num_epochs, learning_rate, model_path, num_exp, writer):
     
     print(rank, world_size, batch_size, num_epochs, learning_rate, model_path, num_exp)
     
     helper = Helper()
-
-    # Tensorboard
-    writer = SummaryWriter('runs/capsule_mnist_experiment_' + str(num_epochs) + "_" + str(num_exp))
 
     # Data Parallelism for Multiple GPU
     dataParallel = DataParallel()
@@ -181,12 +178,15 @@ if __name__ == '__main__':
 
     model_path = 'saved_model/caps_mnist/'
     Path(model_path).mkdir(parents=True, exist_ok=True)
+
+    # Tensorboard
+    writer = SummaryWriter('runs/capsule_mnist_experiment_' + str(num_epochs) + "_" + str(num_exp))
     
     # Put no. of GPU's used
     world_size = 2
     mp.spawn(
         main,
-        args=(world_size, batch_size, num_epochs, learning_rate, model_path, num_exp),
+        args=(world_size, batch_size, num_epochs, learning_rate, model_path, num_exp, writer),
         nprocs=world_size
     )
     
