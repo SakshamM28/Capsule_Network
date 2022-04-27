@@ -127,8 +127,9 @@ def main(rank, world_size, batch_size, num_epochs, learning_rate, model_path, nu
             loss.backward()
             optimizer.step()
 
-        # LR decay
-        lr_scheduler.step()
+        # LR decay after every 2 epochs, original paper applies after ~3 epochs
+        if (epoch+1)%2 ==0:
+            lr_scheduler.step()
         
         # Calculate accuracies on whole dataset
         if rank == 0:
