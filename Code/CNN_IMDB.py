@@ -65,8 +65,8 @@ class ImdbCNN1d(nn.Module):
       return self.class_activation(self.fc(cat))
 
 
-def main(batch_size, num_epochs, learning_rate, model_path, num_exp, max_words, embed_len):
-    print(batch_size, num_epochs, learning_rate, model_path, num_exp, max_words, embed_len)
+def main(batch_size, num_epochs, learning_rate, model_path, num_exp, max_words, embed_len, l2_penalty):
+    print(batch_size, num_epochs, learning_rate, model_path, num_exp, max_words, embed_len, l2_penalty)
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -92,7 +92,7 @@ def main(batch_size, num_epochs, learning_rate, model_path, num_exp, max_words, 
     
     print(helper.count_parameters(network))
 
-    optimizer = optim.Adam(network.parameters(), lr=learning_rate, weight_decay = 0.1)
+    optimizer = optim.Adam(network.parameters(), lr=learning_rate, weight_decay = l2_penalty)
     lr_scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.96)
 
     train_acc_l = []
@@ -167,6 +167,7 @@ if __name__ == '__main__':
     num_epochs = int(sys.argv[2])
     learning_rate = 1e-3
     num_exp = int(sys.argv[3])
+    l2_penalty = float(sys.argv[4])
     model_path = "saved_model/cnn_imdb/"
     
     if os.path.exists(model_path) == False:
@@ -174,6 +175,7 @@ if __name__ == '__main__':
 
     #TODO : Preprocess data to find suitable max words per sentence
     max_words = 200
-    embed_len = 300
+    embed_len = 100
     
-    main(batch_size, num_epochs, learning_rate, model_path, num_exp, max_words, embed_len)
+    main(batch_size, num_epochs, learning_rate, model_path, num_exp, max_words, embed_len, l2_penalty)
+

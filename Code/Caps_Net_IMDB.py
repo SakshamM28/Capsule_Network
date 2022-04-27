@@ -43,17 +43,17 @@ class ImdbCapsuleNetworkModel(nn.Module):
     def forward(self, text):
             
       #text = [batch size, sent len, emb dim]
-      print(text.shape)
+      #print(text.shape)
 
       
       embedded = text.unsqueeze(1)
       #embedded = [batch size, 1, sent len, emb dim]
-      print(embedded.shape)
-      
+      #print(embedded.shape)
+
       x = F.relu(self.conv1(embedded))
-      print(x.shape)
+      #print(x.shape)
       x = self.conv2(x)
-      print(x.shape)
+      #print(x.shape)
       
       caps = x.view(x.shape[0], 8, 32 * self.conv_out).permute(0, 2, 1)
       caps = self.squash.perform(caps)
@@ -66,8 +66,8 @@ class ImdbCapsuleNetworkModel(nn.Module):
       return caps, pred
 
 
-def main(batch_size, num_epochs, learning_rate, model_path, num_exp, max_words, embed_len):
-    print(batch_size, num_epochs, learning_rate, model_path, num_exp, max_words, embed_len)
+def main(batch_size, num_epochs, learning_rate, model_path, num_exp, max_words, embed_len, l2_penalty):
+    print(batch_size, num_epochs, learning_rate, model_path, num_exp, max_words, embed_len, l2_penalty)
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     
@@ -93,8 +93,7 @@ def main(batch_size, num_epochs, learning_rate, model_path, num_exp, max_words, 
     
     print(helper.count_parameters(network))
 
-    # TODO Checl L2 penealty
-    optimizer = optim.Adam(network.parameters(), lr=learning_rate)
+    optimizer = optim.Adam(network.parameters(), lr=learning_rate, weight_decay=l2_penalty)
     lr_scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.96)
 
     train_acc_l = []
@@ -110,7 +109,7 @@ def main(batch_size, num_epochs, learning_rate, model_path, num_exp, max_words, 
 
             # Get the predictions
             caps, preds = network.forward(data)
-            #print(preds.shape)
+            #print(caps)
 
             # Compute the loss
             loss = helper.cost(caps, target)
@@ -169,6 +168,7 @@ if __name__ == '__main__':
     num_epochs = int(sys.argv[2])
     learning_rate = 1e-3
     num_exp = int(sys.argv[3])
+    l2_penalty = float(sys.argv[4])
     model_path = "saved_model/caps_net_imdb/"
     
     if os.path.exists(model_path) == False:
@@ -178,4 +178,5 @@ if __name__ == '__main__':
     max_words = 200
     embed_len = 100
     
-    main(batch_size, num_epochs, learning_rate, model_path, num_exp, max_words, embed_len)
+    main(batch_size, num_epochs, learning_rate, model_path, num_exp, max_words, embed_len, l2_penalty)
+

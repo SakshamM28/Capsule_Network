@@ -122,8 +122,8 @@ class DatasetHelper():
         else:
             split = 'test'
         
-        return to_map_style_dataset(datasets.IMDB(root='./Data/IMDB/' ,split = split) )
-        #return to_map_style_dataset(datasets.IMDB(root='/scratch/sakshamgoyal/' ,split = split) )
+        #return to_map_style_dataset(datasets.IMDB(root='./Data/IMDB/' ,split = split) )
+        return to_map_style_dataset(datasets.IMDB(root='/scratch/sakshamgoyal/' ,split = split) )
 
 class Helper():
     
@@ -141,8 +141,8 @@ class Helper():
         self.embed_len = embed_len
         
         # Load Pretrained GloVe embeddings
-        self.glove = vocab.GloVe(name='6B', dim=self.embed_len, cache = './Data/GloVE/')
-        #self.glove = vocab.GloVe(name='6B', dim=self.embed_len, cache = '/scratch/sakshamgoyal/')
+        #self.glove = vocab.GloVe(name='6B', dim=self.embed_len, cache = './Data/GloVE/')
+        self.glove = vocab.GloVe(name='6B', dim=self.embed_len, cache = '/scratch/sakshamgoyal/')
         #self.glove = vocab.GloVe(name='840B', dim=self.embed_len, cache = '/scratch/sakshamgoyal/')
         
     def cost(self, caps: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
