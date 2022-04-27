@@ -81,8 +81,8 @@ def main(rank, world_size, batch_size, num_epochs, learning_rate, model_path, nu
     ## Load Full Test data for evaluation
     test_loader = torch.utils.data.DataLoader(DatasetHelper.getDataSet(False), batch_size=batch_size)
     
-    print("Training dataset size: ", train_loader.dataset.data.size(0))
-    print("Test dataset size: ", test_loader.dataset.data.size(0))
+    print('Training dataset size: ', train_loader.dataset.data.size(0))
+    print('Test dataset size: ', test_loader.dataset.data.size(0))
 
     # Set up the network and optimizer
     network = MNISTCapsuleNetworkModel()
@@ -150,7 +150,7 @@ def main(rank, world_size, batch_size, num_epochs, learning_rate, model_path, nu
             best_epoch = epoch + 1
 
             # Saving the model with best test accuracy till current epoch
-            torch.save(network.state_dict(), model_path + "caps_net_mnist_" + str(num_epochs) + "_"+ str(epoch+1) + ".pt")
+            torch.save(network.state_dict(), model_path + 'caps_net_mnist_' + str(num_epochs) + "_"+ str(epoch+1) + ".pt")
 
 
     writer.flush()
@@ -179,8 +179,8 @@ if __name__ == '__main__':
     learning_rate = 1e-3
     num_exp = int(sys.argv[3])
 
-    model_path = Path('saved_model/caps_mnist/')
-    model_path.mkdir(parents=True, exist_ok=True)
+    model_path = 'saved_model/caps_mnist/'
+    Path(model_path).mkdir(parents=True, exist_ok=True)
     
     # Put no. of GPU's used
     world_size = 2
