@@ -100,7 +100,9 @@ def main(batch_size, num_epochs, learning_rate, model_path, num_exp, max_words, 
     network = ImdbCapsuleNetworkModel(embed_len, max_words, N_CAPSULES, N_FILTERS, FILTER_SIZE, OUTPUT_DIM, DROPOUT)
     network.to(device)
     
-    print(helper.count_parameters(network))
+    table, total_params = helper.count_parameters(network)
+    print(table)
+    print('Total trainable parameters: ', total_params)
 
     optimizer = optim.Adam(network.parameters(), lr=learning_rate, weight_decay=l2_penalty)
     lr_scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.96)
@@ -169,7 +171,7 @@ def main(batch_size, num_epochs, learning_rate, model_path, num_exp, max_words, 
     print(" Max Test Accuracy : ", max(test_acc_l))
     print(" Best Test Accuracy epoch: ", best_epoch)
 
-import os
+from pathlib import Path
 if __name__ == '__main__':
     
     # Control variables
@@ -181,12 +183,11 @@ if __name__ == '__main__':
 
     model_path = "saved_model/caps_net_imdb/"
     
-    if os.path.exists(model_path) == False:
-        os.mkdir(model_path)
+    Path(model_path).mkdir(parents=True, exist_ok=True)
 
     #TODO : Preprocess data to find suitable max words per sentence
     max_words = 200
-    embed_len = 100
+    embed_len = 300
     
     main(batch_size, num_epochs, learning_rate, model_path, num_exp, max_words, embed_len, l2_penalty)
 

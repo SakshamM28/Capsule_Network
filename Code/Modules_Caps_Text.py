@@ -142,8 +142,8 @@ class DataPreProcess():
         
         # Load Pretrained GloVe embeddings
         #self.glove = vocab.GloVe(name='6B', dim=self.embed_len, cache = './Data/GloVE/')
-        self.glove = vocab.GloVe(name='6B', dim=self.embed_len, cache = '/scratch/sakshamgoyal/')
-        #self.glove = vocab.GloVe(name='840B', dim=self.embed_len, cache = '/scratch/sakshamgoyal/')
+        #self.glove = vocab.GloVe(name='6B', dim=self.embed_len, cache = '/scratch/sakshamgoyal/')
+        self.glove = vocab.GloVe(name='840B', dim=self.embed_len, cache = '/scratch/sakshamgoyal/')
 
     def vectorize_batch(self, batch):
         '''
@@ -166,7 +166,7 @@ class DataParallel():
 
     def setup(self, rank, world_size):
         os.environ['MASTER_ADDR'] = 'localhost'
-        os.environ['MASTER_PORT'] = '12445'
+        os.environ['MASTER_PORT'] = '13445'
         dist.init_process_group(backend="nccl", rank=rank, world_size=world_size)
 
     def prepare(self, isTrain, rank, world_size, batch_size=128, pin_memory=False, num_workers=0, pre_process=None):

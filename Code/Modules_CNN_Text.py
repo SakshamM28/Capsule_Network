@@ -42,8 +42,8 @@ class Helper():
         
         # Load Pretrained GloVe embeddings
         #self.glove = vocab.GloVe(name='6B', dim=self.embed_len, cache = './Data/GloVE/')
-        self.glove = vocab.GloVe(name='6B', dim=self.embed_len, cache = '/scratch/sakshamgoyal/')
-        #self.glove = vocab.GloVe(name='840B', dim=self.embed_len, cache = '/scratch/sakshamgoyal/')
+        #self.glove = vocab.GloVe(name='6B', dim=self.embed_len, cache = '/scratch/sakshamgoyal/')
+        self.glove = vocab.GloVe(name='840B', dim=self.embed_len, cache = '/scratch/sakshamgoyal/')
         
     def cost(self, predictions: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
         """

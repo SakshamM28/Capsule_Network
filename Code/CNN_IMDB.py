@@ -82,7 +82,7 @@ def main(batch_size, num_epochs, learning_rate, model_path, num_exp, max_words, 
     print("Test dataset size: ", len(test_loader.dataset))
 
     # Model Initialization variables
-    N_FILTERS = 100
+    N_FILTERS = 256
     FILTER_SIZES = [3,4,5]
     OUTPUT_DIM = 2
     DROPOUT = 0.5
@@ -159,23 +159,22 @@ def main(batch_size, num_epochs, learning_rate, model_path, num_exp, max_words, 
     print(" Max Test Accuracy : ", max(test_acc_l))
     print(" Best Test Accuracy epoch: ", best_epoch)
 
-import os
+from pathlib import Path
 if __name__ == '__main__':
     
     # Control variables
     batch_size = int(sys.argv[1])
     num_epochs = int(sys.argv[2])
-    learning_rate = 1e-3
+    learning_rate = 1e-4
     num_exp = int(sys.argv[3])
     l2_penalty = float(sys.argv[4])
-    model_path = "saved_model/cnn_imdb/"
+    model_path = "saved_model/cnn_imdb_" + str(num_exp) + "/"
     
-    if os.path.exists(model_path) == False:
-        os.mkdir(model_path)
+    Path(model_path).mkdir(parents=True, exist_ok=True)
 
     #TODO : Preprocess data to find suitable max words per sentence
     max_words = 200
-    embed_len = 100
+    embed_len = 300
     
     main(batch_size, num_epochs, learning_rate, model_path, num_exp, max_words, embed_len, l2_penalty)
 
