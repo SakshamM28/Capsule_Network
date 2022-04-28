@@ -227,7 +227,7 @@ class Helper():
         '''
 
         # undo normalization
-        data = data * 0.3081 + 0.1307
+        #data = data * 0.3081 + 0.1307
         # transformations for shifted MNIST
         shift, max_shift = 2, 2
         # print(data.shape)
@@ -237,7 +237,7 @@ class Helper():
         #print('Data shape after transformation: ', np.shape(shifted_data_numpy))
         data = torch.from_numpy(shifted_data_numpy)
         # redo normalization
-        data = (data - 0.1307) / 0.3081
+        #data = (data - 0.1307) / 0.3081
 
         return data
 
