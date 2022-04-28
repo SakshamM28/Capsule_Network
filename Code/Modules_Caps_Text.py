@@ -6,12 +6,16 @@ Created on Tue Apr 26 15:35:34 2022
 @author: saksham
 """
 
+import os
 import torch
 import torch.nn as nn
 from torchtext import datasets
 from torchtext.data.utils import get_tokenizer
 
 import torch.nn.functional as F
+
+import torch.distributed as dist
+from torch.utils.data.distributed import DistributedSampler
 
 from torchtext.data.functional import to_map_style_dataset
 from torchtext import vocab
@@ -124,19 +128,15 @@ class DatasetHelper():
         
         #return to_map_style_dataset(datasets.IMDB(root='./Data/IMDB/' ,split = split) )
         return to_map_style_dataset(datasets.IMDB(root='/scratch/sakshamgoyal/' ,split = split) )
-
-class Helper():
     
-    def __init__(self, max_words, embed_len, n_labels):
+class DataPreProcess():
+    def __init__(self, max_words, embed_len):
         '''
         param max_words : len of single sample/document
         param embed_len : length of embegging vector
         '''
         
-        self.margin_loss = MarginLoss(n_labels=n_labels)
-        
         self.tokenizer = get_tokenizer("basic_english")
-        self.loss = nn.NLLLoss(reduction='sum')
         self.max_words = max_words
         self.embed_len = embed_len
         
@@ -144,13 +144,7 @@ class Helper():
         #self.glove = vocab.GloVe(name='6B', dim=self.embed_len, cache = './Data/GloVE/')
         self.glove = vocab.GloVe(name='6B', dim=self.embed_len, cache = '/scratch/sakshamgoyal/')
         #self.glove = vocab.GloVe(name='840B', dim=self.embed_len, cache = '/scratch/sakshamgoyal/')
-        
-    def cost(self, caps: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
 
-        margin_loss = self.margin_loss.calculate(caps, targets)
-
-        return margin_loss
-    
     def vectorize_batch(self, batch):
         '''
         Gets a batch and return embeddings after padding or truncating to max_words
@@ -168,6 +162,40 @@ class Helper():
         Y = [int(y == 'pos')  for y in Y]
         return X_tensor, torch.tensor(Y)
 
+class DataParallel():
+
+    def setup(self, rank, world_size):
+        os.environ['MASTER_ADDR'] = 'localhost'
+        os.environ['MASTER_PORT'] = '12445'
+        dist.init_process_group(backend="nccl", rank=rank, world_size=world_size)
+
+    def prepare(self, isTrain, rank, world_size, batch_size=128, pin_memory=False, num_workers=0, pre_process=None):
+        dataset = DatasetHelper.getIMDBDataSet(isTrain)
+        sampler = DistributedSampler(dataset, num_replicas=world_size, rank=rank, shuffle=True, drop_last=False)
+
+        dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, pin_memory=pin_memory, num_workers=num_workers, drop_last=False, shuffle=False, sampler=sampler, collate_fn=pre_process.vectorize_batch)
+
+        return dataloader
+
+    def cleanup(self):
+        dist.destroy_process_group()
+
+class Helper():
+
+    def __init__(self, n_labels, pre_process):
+        '''
+        param n_labels : Number of output classes
+        '''
+        self.margin_loss = MarginLoss(n_labels=n_labels)
+        self.loss = nn.NLLLoss(reduction='sum')
+
+        self.pre_process = pre_process
+
+    def cost(self, caps: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+
+        margin_loss = self.margin_loss.calculate(caps, targets)
+        return margin_loss
+
     def count_parameters(self, model):
         table = PrettyTable(["Modules", "Parameters"])
         total_params = 0
@@ -176,21 +204,24 @@ class Helper():
             params = parameter.numel()
             table.add_row([name, params])
             total_params+=params
-        print(table)
-        print(f"Total Trainable Params: {total_params}")
-        return total_params
-    
-    def evaluate(self, network, epoch, batch_size):
-        
-        if torch.cuda.is_available():
-            print("GPU available")
+        #print(table)
+        #print(f"Total Trainable Params: {total_params}")
+        return table, total_params
+
+    def evaluate(self, network, epoch, batch_size, rank = None):
+
+        if rank:
+            dev = rank
+        elif torch.cuda.is_available():
             dev = torch.device("cuda")
+            if rank == 0:
+                print("GPU available")
         else:
             dev = torch.device("cpu")
-            
-        train_loader = torch.utils.data.DataLoader(DatasetHelper.getIMDBDataSet(True), batch_size=batch_size, shuffle=True, collate_fn=self.vectorize_batch)
-        test_loader  = torch.utils.data.DataLoader(DatasetHelper.getIMDBDataSet(False), batch_size=batch_size, shuffle=True, collate_fn=self.vectorize_batch)
-        
+
+        train_loader = torch.utils.data.DataLoader(DatasetHelper.getIMDBDataSet(True), batch_size=batch_size, shuffle=True, collate_fn=self.pre_process.vectorize_batch)
+        test_loader  = torch.utils.data.DataLoader(DatasetHelper.getIMDBDataSet(False), batch_size=batch_size, shuffle=True, collate_fn=self.pre_process.vectorize_batch)
+
         network.to(dev)
         network.eval()
         # Compute accuracy on training set

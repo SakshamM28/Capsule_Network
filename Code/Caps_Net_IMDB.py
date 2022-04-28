@@ -12,7 +12,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
-from Modules_Caps_Text import Helper, DatasetHelper, Routing, Squash
+from Modules_Caps_Text import Helper, DatasetHelper, Routing, Squash, DataPreProcess
 from torch.utils.tensorboard import SummaryWriter
 
 class ImdbCapsuleNetworkModel(nn.Module):
@@ -56,7 +56,9 @@ class ImdbCapsuleNetworkModel(nn.Module):
       #print(x.shape)
       
       caps = x.view(x.shape[0], 8, 32 * self.conv_out).permute(0, 2, 1)
-      caps = self.squash.perform(caps)
+      # Trying relu to avoid vanishing gradient
+      caps = F.relu(caps)
+      #caps = self.squash.perform(caps)
       caps = self.text_capsules.perform(caps)
       
       
@@ -72,18 +74,19 @@ def main(batch_size, num_epochs, learning_rate, model_path, num_exp, max_words, 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     
     # Model Initialization variables
-    N_FILTERS = 100
-    FILTER_SIZE = 3
+    N_FILTERS = 256
+    FILTER_SIZE = 6
     OUTPUT_DIM = 2
     DROPOUT = 0.5
 
-    helper = Helper(max_words,embed_len, OUTPUT_DIM)
+    dataPreProcess = DataPreProcess(max_words, embed_len)
+    helper = Helper(OUTPUT_DIM, dataPreProcess)
 
     # Tensorboard
     writer = SummaryWriter('runs/caps_net_imdb_experiment_' + str(num_epochs) + "_" + str(num_exp))
 
-    train_loader = torch.utils.data.DataLoader(DatasetHelper.getIMDBDataSet(True), batch_size=batch_size, shuffle=True, collate_fn=helper.vectorize_batch)
-    test_loader  = torch.utils.data.DataLoader(DatasetHelper.getIMDBDataSet(False), batch_size=batch_size, shuffle=True, collate_fn=helper.vectorize_batch)
+    train_loader = torch.utils.data.DataLoader(DatasetHelper.getIMDBDataSet(True), batch_size=batch_size, shuffle=True, collate_fn=dataPreProcess.vectorize_batch)
+    test_loader  = torch.utils.data.DataLoader(DatasetHelper.getIMDBDataSet(False), batch_size=batch_size, shuffle=True, collate_fn=dataPreProcess.vectorize_batch)
 
     print("Training dataset size: ", len(train_loader.dataset))
     print("Test dataset size: ", len(test_loader.dataset))
@@ -169,6 +172,7 @@ if __name__ == '__main__':
     learning_rate = 1e-3
     num_exp = int(sys.argv[3])
     l2_penalty = float(sys.argv[4])
+
     model_path = "saved_model/caps_net_imdb/"
     
     if os.path.exists(model_path) == False:
