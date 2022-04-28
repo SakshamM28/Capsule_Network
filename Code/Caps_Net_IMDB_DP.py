@@ -21,7 +21,7 @@ from Modules_Caps_Text import Squash, Routing, Helper, DataParallel, DatasetHelp
 
 class ImdbCapsuleNetworkModel(nn.Module):
 
-    def __init__(self, embedding_dim, max_words, n_filters, filter_size, output_dim, dropout):
+    def __init__(self, embedding_dim, max_words, n_capsules, n_filters, filter_size, output_dim, dropout):
       '''
       params
       embedding_dim : length of embedding used
@@ -32,16 +32,17 @@ class ImdbCapsuleNetworkModel(nn.Module):
       '''
       super(ImdbCapsuleNetworkModel, self).__init__()
 
+      self.elu_l = nn.Conv2d(in_channels = 1, out_channels = n_filters, kernel_size = [filter_size, embedding_dim], stride=1)
       self.conv1 = nn.Conv2d(in_channels = 1, out_channels = n_filters, kernel_size = [filter_size, embedding_dim], stride=1)
-      self.conv2 = nn.Conv2d(in_channels=n_filters, out_channels=32 * 8, kernel_size=[filter_size,1], stride=1, padding=0)
+      self.conv2 = nn.Conv2d(in_channels=n_filters, out_channels= n_capsules * 8, kernel_size=[filter_size,1], stride=1, padding=0)
       
       self.squash = Squash()
       #TODO Check outputs after connvs
       self.conv_out = max_words - 2*filter_size + 2
+      self.n_capsules = n_capsules
       
-      self.text_capsules = Routing(32 * self.conv_out , output_dim , 8, 16, 3)
-      
-      # TODO Check dropout on layers 
+      self.text_capsules = Routing(n_capsules * self.conv_out , output_dim , 8, 16, 3)
+
       self.dropout = nn.Dropout(dropout)
 
     def forward(self, text):
@@ -52,19 +53,22 @@ class ImdbCapsuleNetworkModel(nn.Module):
       
       embedded = text.unsqueeze(1)
       #embedded = [batch size, 1, sent len, emb dim]
-      #print(embedded.shape)
 
+      x_elu = F.elu(self.elu_l(embedded))
       x = F.relu(self.conv1(embedded))
-      #print(x.shape)
+
+      x = x_elu * x
+      x = self.dropout(x)
       x = self.conv2(x)
-      #print(x.shape)
-      
-      caps = x.view(x.shape[0], 8, 32 * self.conv_out).permute(0, 2, 1)
+
+      caps = x.view(x.shape[0], 8, self.n_capsules * self.conv_out).permute(0, 2, 1)
       # Trying relu to avoid vanishing gradient
       caps = F.relu(caps)
       #caps = self.squash.perform(caps)
+
+      caps = self.dropout(caps)
+
       caps = self.text_capsules.perform(caps)
-      
       
       with torch.no_grad():
           pred = (caps ** 2).sum(-1).argmax(-1)
@@ -75,6 +79,7 @@ def main(rank, world_size, batch_size, num_epochs, learning_rate, model_path, nu
     print(rank, world_size, batch_size, num_epochs, learning_rate, model_path, num_exp, max_words, embed_len, l2_penalty)
     
     # Model Initialization variables
+    N_CAPSULES = 6
     N_FILTERS = 256
     FILTER_SIZE = 6
     OUTPUT_DIM = 2
@@ -101,7 +106,7 @@ def main(rank, world_size, batch_size, num_epochs, learning_rate, model_path, nu
         print("Training dataset size: ", len(train_loader.dataset))
         #print("Test dataset size: ", len(test_loader.dataset))
         
-    network = ImdbCapsuleNetworkModel(embed_len, max_words, N_FILTERS, FILTER_SIZE, OUTPUT_DIM, DROPOUT)
+    network = ImdbCapsuleNetworkModel(embed_len, max_words, N_CAPSULES, N_FILTERS, FILTER_SIZE, OUTPUT_DIM, DROPOUT)
     network.to(rank)
     network= DDP(network, device_ids=[rank], output_device=rank, find_unused_parameters=True)
     
@@ -187,7 +192,6 @@ def main(rank, world_size, batch_size, num_epochs, learning_rate, model_path, nu
     dataParallel.cleanup()
 
 import torch.multiprocessing as mp
-import os
 from pathlib import Path
 
 if __name__ == '__main__':
@@ -199,14 +203,14 @@ if __name__ == '__main__':
     num_exp = int(sys.argv[3])
     l2_penalty = float(sys.argv[4])
 
-    model_path = "saved_model/caps_net_imdb/"
+    model_path = "saved_model/caps_net_imdb_" + str(num_exp) + "/"
     Path(model_path).mkdir(parents=True, exist_ok=True)
     
     
     #TODO : Preprocess data to find suitable max words per sentence
     # According to papaer avg len of IMDB data is 213, so taking 200
     max_words = 200
-    embed_len = 100
+    embed_len = 300
     
     
     # Put no. of GPU's used

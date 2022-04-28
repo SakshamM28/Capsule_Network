@@ -17,7 +17,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 class ImdbCapsuleNetworkModel(nn.Module):
 
-    def __init__(self, embedding_dim, max_words, n_filters, filter_size, output_dim, dropout):
+    def __init__(self, embedding_dim, max_words, n_capsules, n_filters, filter_size, output_dim, dropout):
       '''
       params
       embedding_dim : length of embedding used
@@ -28,16 +28,17 @@ class ImdbCapsuleNetworkModel(nn.Module):
       '''
       super(ImdbCapsuleNetworkModel, self).__init__()
 
+      self.elu_l = nn.Conv2d(in_channels = 1, out_channels = n_filters, kernel_size = [filter_size, embedding_dim], stride=1)
       self.conv1 = nn.Conv2d(in_channels = 1, out_channels = n_filters, kernel_size = [filter_size, embedding_dim], stride=1)
-      self.conv2 = nn.Conv2d(in_channels=n_filters, out_channels=32 * 8, kernel_size=[filter_size,1], stride=1, padding=0)
+      self.conv2 = nn.Conv2d(in_channels=n_filters, out_channels=n_capsules * 8, kernel_size=[filter_size,1], stride=1, padding=0)
       
       self.squash = Squash()
       #TODO Check outputs after connvs
       self.conv_out = max_words - 2*filter_size + 2
+      self.n_capsules = n_capsules
       
-      self.text_capsules = Routing(32 * self.conv_out , output_dim , 8, 16, 3)
-      
-      # TODO Check dropout on layers 
+      self.text_capsules = Routing(n_capsules * self.conv_out , output_dim , 8, 16, 3)
+
       self.dropout = nn.Dropout(dropout)
 
     def forward(self, text):
@@ -48,17 +49,21 @@ class ImdbCapsuleNetworkModel(nn.Module):
       
       embedded = text.unsqueeze(1)
       #embedded = [batch size, 1, sent len, emb dim]
-      #print(embedded.shape)
 
+      x_elu = F.elu(self.elu_l(embedded))
       x = F.relu(self.conv1(embedded))
-      #print(x.shape)
+
+      x = x_elu * x
+      x = self.dropout(x)
       x = self.conv2(x)
-      #print(x.shape)
-      
-      caps = x.view(x.shape[0], 8, 32 * self.conv_out).permute(0, 2, 1)
+
+      caps = x.view(x.shape[0], 8, self.n_capsules * self.conv_out).permute(0, 2, 1)
       # Trying relu to avoid vanishing gradient
       caps = F.relu(caps)
       #caps = self.squash.perform(caps)
+
+      caps = self.dropout(caps)
+
       caps = self.text_capsules.perform(caps)
       
       
@@ -74,6 +79,7 @@ def main(batch_size, num_epochs, learning_rate, model_path, num_exp, max_words, 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     
     # Model Initialization variables
+    N_CAPSULES = 6
     N_FILTERS = 256
     FILTER_SIZE = 6
     OUTPUT_DIM = 2
@@ -91,7 +97,7 @@ def main(batch_size, num_epochs, learning_rate, model_path, num_exp, max_words, 
     print("Training dataset size: ", len(train_loader.dataset))
     print("Test dataset size: ", len(test_loader.dataset))
 
-    network = ImdbCapsuleNetworkModel(embed_len, max_words, N_FILTERS, FILTER_SIZE, OUTPUT_DIM, DROPOUT)
+    network = ImdbCapsuleNetworkModel(embed_len, max_words, N_CAPSULES, N_FILTERS, FILTER_SIZE, OUTPUT_DIM, DROPOUT)
     network.to(device)
     
     print(helper.count_parameters(network))
