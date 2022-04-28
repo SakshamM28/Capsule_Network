@@ -71,7 +71,7 @@ def main(rank, world_size, batch_size, num_epochs, learning_rate, model_path, nu
 
     if rank == 0:
         # Tensorboard
-        writer = SummaryWriter('runs/capsule_mnist_experiment_' + str(num_epochs) + "_" + str(num_exp))
+        writer = SummaryWriter('runs/experiment_' + num_exp)
 
     # Data Parallelism for Multiple GPU
     dataParallel = DataParallel()
@@ -191,9 +191,9 @@ if __name__ == '__main__':
     batch_size = int(sys.argv[1])
     num_epochs = int(sys.argv[2])
     learning_rate = 1e-3
-    num_exp = int(sys.argv[3])
+    num_exp = sys.argv[3]
 
-    model_path = 'saved_model/caps_multi_mnist/'
+    model_path = 'saved_model/' + num_exp + '/'
     Path(model_path).mkdir(parents=True, exist_ok=True)
     
     # Put no. of GPU's used

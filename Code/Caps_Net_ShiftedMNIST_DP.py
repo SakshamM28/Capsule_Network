@@ -35,9 +35,9 @@ class ShiftedMNISTCapsuleNetworkModel(nn.Module):
         
         self.decoder = nn.Sequential(
             nn.Linear(16 * 10, 512),
-            nn.ReLU(),
+            #nn.ReLU(),
             nn.Linear(512, 1024),
-            nn.ReLU(),
+            #nn.ReLU(),
             nn.Linear(1024, 1600),
             nn.Sigmoid()
         )
