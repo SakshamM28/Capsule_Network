@@ -17,7 +17,9 @@ import sys
 import os
 import gzip
 
+import torch
 from torch.utils.data import Dataset
+from torchvision import transforms
 
 class MultiMNIST_Dataloader(Dataset):
 
@@ -72,6 +74,12 @@ class MultiMNIST_Dataloader(Dataset):
         merged = np.add(base_shifted, top_shifted, dtype=np.int32)
         merged = np.minimum(merged, 255).astype(np.uint8)
 
+        merged = np.expand_dims(merged, axis=2)
+        base_shifted = np.expand_dims(base_shifted, axis=2)
+        top_shifted = np.expand_dims(top_shifted, axis=2)
+
+        merged, base_shifted, top_shifted, base_label, top_label = self.transform(merged, base_shifted, top_shifted, base_label, top_label)
+
         return merged, base_shifted, top_shifted, base_label, top_label
 
 
@@ -124,6 +132,13 @@ class MultiMNIST_Dataloader(Dataset):
         return shifted_image
 
     def transform(self, merged, base_shifted, top_shifted, base_label, top_label):
+        transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.1307,), (0.3081,))
+        ])
+        merged, base_shifted, top_shifted = transform(merged), transform(base_shifted), transform(top_shifted)
+        base_label = torch.as_tensor(base_label, dtype=torch.int64)
+        top_label = torch.as_tensor(top_label, dtype=torch.int64)
 
         return merged, base_shifted, top_shifted, base_label, top_label
 

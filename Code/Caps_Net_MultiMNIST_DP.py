@@ -18,6 +18,7 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.tensorboard import SummaryWriter
 
 from Modules import Squash, Routing, Helper, DataParallel, DatasetHelper
+from MultiMNIST_Dataloader import MultiMNIST_Dataloader
 
 class ShiftedMNISTCapsuleNetworkModel(nn.Module):
     #TODO take dynamic parameters for routing, input size etc
@@ -77,10 +78,10 @@ def main(rank, world_size, batch_size, num_epochs, learning_rate, model_path, nu
     # setup the process groups
     dataParallel.setup(rank, world_size)
     # Set up the data loader
-    train_loader = dataParallel.prepare(True, rank, world_size, batch_size)
+    train_loader = dataParallel.prepare(True, rank, world_size, batch_size, is_MultiMNIST=True)
 
     ## Load Full Test data for evaluation
-    test_loader = torch.utils.data.DataLoader(DatasetHelper.getDataSet(False), batch_size=batch_size)
+    test_loader = torch.utils.data.DataLoader(MultiMNIST_Dataloader(is_train=False), batch_size=batch_size)
 
     if rank == 0:
         print('Training dataset size: ', train_loader.dataset.data.size(0))
@@ -108,12 +109,15 @@ def main(rank, world_size, batch_size, num_epochs, learning_rate, model_path, nu
         train_loader.sampler.set_epoch(epoch)
 
         network.train()
-        for batch_idx, (data, target) in enumerate(train_loader):
-            data = data.to(rank)
-            target = target.to(rank)
+        for batch_idx, (merged, base_shifted, top_shifted, base_label, top_label) in enumerate(train_loader):
+            merged = merged.to(rank)
+            base_shifted = base_shifted.to(rank)
+            top_shifted = top_shifted.to(rank)
+            base_label = base_label.to(rank)
+            top_label = top_label.to(rank)
 
             # Get the predictions
-            caps, reconstructions, preds = network.forward(data)
+            caps, reconstructions, preds = network.forward(merged)
             #print(preds.shape)
 
             # Compute the loss

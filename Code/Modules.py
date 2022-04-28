@@ -21,6 +21,8 @@ import torchvision.utils as tvutils
 from prettytable import PrettyTable
 import numpy as np
 
+from MultiMNIST_Dataloader import MultiMNIST_Dataloader
+
 class Squash():
     '''
     Like a activation function but performed on whole layer output and not neuron/element wise
@@ -125,7 +127,7 @@ class DatasetHelper():
         return datasets.MNIST('./Data/mnist/', train=isTrain, download=True,
                        transform=transforms.Compose([
                            transforms.ToTensor(),
-                           transforms.Normalize((0.1307,), (0.3081,))
+                           #transforms.Normalize((0.1307,), (0.3081,))
                        ]))
 
 
@@ -136,10 +138,13 @@ class DataParallel():
         os.environ['MASTER_PORT'] = '12335'
         dist.init_process_group(backend="nccl", rank=rank, world_size=world_size)
 
-    def prepare(self, isTrain, rank, world_size, batch_size=128, pin_memory=False, num_workers=0):
-        dataset = DatasetHelper.getDataSet(isTrain)
-        sampler = DistributedSampler(dataset, num_replicas=world_size, rank=rank, shuffle=False, drop_last=False)
+    def prepare(self, isTrain, rank, world_size, batch_size=128, pin_memory=False, num_workers=0, is_MultiMNIST=False):
+        if is_MultiMNIST:
+            dataset = MultiMNIST_Dataloader(is_train=isTrain)
+        else:
+            dataset = DatasetHelper.getDataSet(isTrain)
 
+        sampler = DistributedSampler(dataset, num_replicas=world_size, rank=rank, shuffle=False, drop_last=False)
         dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, pin_memory=pin_memory, num_workers=num_workers, drop_last=False, shuffle=False, sampler=sampler)
 
         return dataloader
@@ -199,7 +204,7 @@ class Helper():
         '''
 
         # undo normalization
-        data = data * 0.3081 + 0.1307
+        #data = data * 0.3081 + 0.1307
         # transformations for shifted MNIST
         shift, max_shift = 6, 6
         # print(data.shape)
@@ -211,7 +216,7 @@ class Helper():
         # print('Data shape after transformation: ', np.shape(shifted_padded_data_numpy))
         data = torch.from_numpy(shifted_padded_data_numpy)
         # redo normalization
-        data = (data - 0.1307) / 0.3081
+        #data = (data - 0.1307) / 0.3081
 
         return data
 
@@ -277,7 +282,8 @@ class Helper():
                     grid = tvutils.make_grid(reconstructions[1, :, :, :])
                     writer.add_image('train_recons_images', grid, (epoch+1))
 
-                    grid = tvutils.make_grid(data[1, :, :, :] * 0.3081 + 0.1307)
+                    #grid = tvutils.make_grid(data[1, :, :, :] * 0.3081 + 0.1307)
+                    grid = tvutils.make_grid(data[1, :, :, :])
                     writer.add_image('train_images', grid, (epoch + 1))
 
         train_loss = train_running_loss / train_loader.dataset.data.size(0)
