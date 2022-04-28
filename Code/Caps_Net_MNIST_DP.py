@@ -192,7 +192,7 @@ if __name__ == '__main__':
     learning_rate = 1e-3
     num_exp = sys.argv[3]
 
-    model_path = 'saved_model/' + num_exp
+    model_path = 'saved_model/' + num_exp + '/'
     Path(model_path).mkdir(parents=True, exist_ok=True)
     
     # Put no. of GPU's used
