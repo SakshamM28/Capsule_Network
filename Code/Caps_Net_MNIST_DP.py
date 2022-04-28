@@ -70,7 +70,7 @@ def main(rank, world_size, batch_size, num_epochs, learning_rate, model_path, nu
 
     if rank == 0:
         # Tensorboard
-        writer = SummaryWriter('runs/experiment_' + '_' + num_exp)
+        writer = SummaryWriter('runs/experiment_' + num_exp)
 
     # Data Parallelism for Multiple GPU
     dataParallel = DataParallel()
