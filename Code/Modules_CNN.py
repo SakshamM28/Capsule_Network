@@ -49,7 +49,7 @@ class DatasetHelper():
 class Helper():
     
     def __init__(self):
-        self.loss = nn.NLLLoss()
+        self.loss = nn.NLLLoss(reduction='sum')
         
         
     def cost(self, predictions: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:

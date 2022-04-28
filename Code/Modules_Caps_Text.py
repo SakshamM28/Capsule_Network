@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Sat Apr 23 16:58:55 2022
+Created on Tue Apr 26 15:35:34 2022
 
 @author: saksham
 """
@@ -11,11 +11,109 @@ import torch.nn as nn
 from torchtext import datasets
 from torchtext.data.utils import get_tokenizer
 
+import torch.nn.functional as F
+
 from torchtext.data.functional import to_map_style_dataset
 from torchtext import vocab
 
 from prettytable import PrettyTable
 
+class Squash():
+    '''
+    Like a activation function but performed on whole layer output and not neuron/element wise
+    '''
+    
+    def __init__(self, epsilon=1e-8):
+        self.epsilon = epsilon
+    def perform(self, s: torch.Tensor):
+        
+        s2 = (s ** 2).sum(dim=-1, keepdims=True)
+        
+        # Adding epsilon in case s2 become 0
+        return (s2 / (1 + s2)) * (s / torch.sqrt(s2 + self.epsilon))
+
+class Routing(nn.Module):
+    
+    def __init__(self, in_caps: int, out_caps: int, in_d: int, out_d: int, iterations: int):
+
+        '''
+        params
+        in_caps : Input from previvous layer reshaped to form capsules, 32*8 channels divided in 2 parts
+        32 as number of capsules and 8 as input dimension
+
+        out_caps : 2 -  1 for every class
+
+        in_d : imput dimension (8)
+
+        out_d : output dimension (length of each vector of output class)
+
+        iterations : routing loop iterations
+        '''
+
+        super(Routing,self).__init__()
+
+        #Intitialization with parameters required for routing
+        self.in_caps = in_caps
+        self.out_caps = out_caps
+        self.iterations = iterations
+        self.softmax = nn.Softmax(dim=1)
+        self.squash = Squash()
+
+        # Weight matrix learned during training
+        self.weight = nn.Parameter(torch.randn(in_caps, out_caps, in_d, out_d), requires_grad=True)
+
+
+    def perform(self, u):
+
+        self.weight = self.weight.to(u.device)
+
+        # Prediction Vectors (Sumed over input dimentions)
+        u_hat = torch.einsum('ijnm,bin->bijm', self.weight, u)
+
+        b = u.new_zeros(u.shape[0], self.in_caps, self.out_caps)
+
+        v = None
+
+        for i in range(self.iterations):
+
+            c = self.softmax(b)
+            # Weighted sum over pridiction vectors
+            s = torch.einsum('bij,bijm->bjm', c, u_hat)
+            v = self.squash.perform(s)
+            # agreement
+            a = torch.einsum('bjm,bijm->bij', v, u_hat)
+
+            b = b + a
+
+        return v
+
+class MarginLoss():
+    
+    def __init__(self, *, n_labels: int, lambda_: float = 0.5, m_positive: float = 0.9, m_negative: float = 0.1):
+
+        '''
+        params
+
+        n_labels : Totals classes
+        lambda_ : Use to decrease loss if wrong result so that training is not affected in start
+        m_positive : weight of positive loss
+        m_negative : weight of negative loss
+        '''
+
+        self.m_negative = m_negative
+        self.m_positive = m_positive
+        self.lambda_ = lambda_
+        self.n_labels = n_labels
+
+    def calculate(self, v: torch.Tensor, labels: torch.Tensor):
+
+        v_norm = torch.sqrt((v ** 2).sum(dim=-1))
+
+        labels = torch.eye(self.n_labels, device=labels.device)[labels]
+
+        loss = labels * F.relu(self.m_positive - v_norm) + self.lambda_ * (1.0 - labels) * F.relu(v_norm - self.m_negative)
+
+        return loss.sum(dim=-1).sum()
 
 class DatasetHelper():
     def getIMDBDataSet(isTrain):
@@ -29,11 +127,13 @@ class DatasetHelper():
 
 class Helper():
     
-    def __init__(self, max_words, embed_len):
+    def __init__(self, max_words, embed_len, n_labels):
         '''
         param max_words : len of single sample/document
         param embed_len : length of embegging vector
         '''
+        
+        self.margin_loss = MarginLoss(n_labels=n_labels)
         
         self.tokenizer = get_tokenizer("basic_english")
         self.loss = nn.NLLLoss(reduction='sum')
@@ -45,13 +145,11 @@ class Helper():
         self.glove = vocab.GloVe(name='6B', dim=self.embed_len, cache = '/scratch/sakshamgoyal/')
         #self.glove = vocab.GloVe(name='840B', dim=self.embed_len, cache = '/scratch/sakshamgoyal/')
         
-    def cost(self, predictions: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
-        """
-        :param predictions: (batch_size, 2) Output predictions (log probabilities)
-        :param targets: (batch_size, 1) Target classes
-        :return cost: The negative log-likelihood loss
-        """
-        return self.loss(predictions, targets.view(-1))
+    def cost(self, caps: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+
+        margin_loss = self.margin_loss.calculate(caps, targets)
+
+        return margin_loss
     
     def vectorize_batch(self, batch):
         '''
@@ -104,12 +202,10 @@ class Helper():
                 data = data.to(dev)
                 target = target.to(dev)
 
-                preds = network.forward(data)
-                _, pred = torch.max(preds, dim=1)
-                count += torch.sum(pred == target).detach().item()
+                caps , preds = network.forward(data)
+                count += torch.sum(preds == target).detach().item()
 
-                batch_loss = self.cost(preds, target)
-
+                batch_loss = self.cost(caps, target)
                 train_running_loss += batch_loss.item()
 
         train_loss = train_running_loss / len(train_loader.dataset)
@@ -126,12 +222,10 @@ class Helper():
                 data = data.to(dev)
                 target = target.to(dev)
 
-                preds = network.forward(data)
-                _, pred = torch.max(preds, dim=1)
-                count += torch.sum(pred == target).detach().item()
+                caps , preds = network.forward(data)
+                count += torch.sum(preds == target).detach().item()
 
-                batch_loss = self.cost(preds, target)
-                #print('Test Batch Loss:', batch_loss.item()/ data.size(0) )
+                batch_loss = self.cost(caps, target)
                 test_running_loss += batch_loss.item()
 
         test_loss = test_running_loss / len(test_loader.dataset)
