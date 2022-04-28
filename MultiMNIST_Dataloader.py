@@ -35,6 +35,8 @@ class MultiMNIST_Dataloader(Dataset):
         }
 
         self.IMAGE_SIZE_PX = 28
+        self.shift = 6
+        self.pad = 4
 
         self.images = []
         self.targets = []
@@ -44,13 +46,33 @@ class MultiMNIST_Dataloader(Dataset):
         else:
             self.images, self.targets = self.read_byte_data(data_dir=self.data_dir, split='test')
 
+        # pad to make all images in the dataset to make them 36x36
+        self.padded_images = [np.pad(image, self.pad, 'constant')
+                   for image in self.images]
+
 
     def __len__(self):
         return len(self.images) # size of MNIST dataset
 
 
     def __getitem__(self, item):
-        return None
+        i = np.random.randint(len(self.padded_images))
+        j = np.random.randint(len(self.padded_images))
+        while self.targets[i] == self.targets[j]:
+            j = np.random.randint(len(self.padded_images))
+
+        base_image, base_label = self.padded_images[i], self.targets[i]
+        top_image, top_label = self.padded_images[j], self.targets[j]
+
+        # random shifting of a digit in image before overlap
+        random_shifts = np.random.randint(-self.shift, self.shift + 1, (2))
+
+        base_shifted = self.shift_2d(base_image, random_shifts, self.shift).astype(np.uint8)
+        top_shifted = self.shift_2d(top_image, random_shifts, self.shift).astype(np.uint8)
+        merged = np.add(base_shifted, top_shifted, dtype=np.int32)
+        merged = np.minimum(merged, 255).astype(np.uint8)
+
+        return merged, base_shifted, top_shifted, base_label, top_label
 
 
     def read_file(self, file_bytes, header_byte_size, data_size):
@@ -100,4 +122,9 @@ class MultiMNIST_Dataloader(Dataset):
         rolled_image = np.roll(rolled_image, shift[1], axis=1)
         shifted_image = rolled_image[max_shift:-max_shift, max_shift:-max_shift]
         return shifted_image
+
+    def transform(self, merged, base_shifted, top_shifted, base_label, top_label):
+
+        return merged, base_shifted, top_shifted, base_label, top_label
+
 
