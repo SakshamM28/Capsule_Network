@@ -133,7 +133,7 @@ class DataParallel():
 
     def setup(self, rank, world_size):
         os.environ['MASTER_ADDR'] = 'localhost'
-        os.environ['MASTER_PORT'] = '12355'
+        os.environ['MASTER_PORT'] = '12335'
         dist.init_process_group(backend="nccl", rank=rank, world_size=world_size)
 
     def prepare(self, isTrain, rank, world_size, batch_size=128, pin_memory=False, num_workers=0):
@@ -163,9 +163,9 @@ class Helper():
             params = parameter.numel()
             table.add_row([name, params])
             total_params+=params
-        print(table)
-        print(f"Total Trainable Params: {total_params}")
-        return total_params
+        #print(table)
+        #print(f"Total Trainable Params: {total_params}")
+        return table, total_params
 
 
     def cost(self, caps: torch.Tensor, targets: torch.Tensor, reconstructions: torch.Tensor, data: torch.Tensor, isReconstruction = False) -> torch.Tensor:
@@ -192,7 +192,7 @@ class Helper():
         shifted_image = rolled_image[:, :, max_shift:-max_shift, max_shift:-max_shift]
         return shifted_image
 
-    def transformData(self, data, batch_size):
+    def transformData_ShiftedMNIST(self, data, batch_size):
 
         '''
         This function is used to transform MNIST data to 40x40 by padding and randomly shifting
@@ -207,23 +207,44 @@ class Helper():
         padded_data_numpy = np.pad(data_numpy, ((0, 0), (0, 0), (6, 6), (6, 6)), 'constant')
         # print(np.shape(padded_data_numpy))
         random_shifts = np.random.randint(-shift, shift + 1, (batch_size, 2))
-        shifted_padded_data_numpy = self.shift_2d(padded_data_numpy, random_shifts, max_shift=6)
-        # print(np.shape(shifted_padded_data_numpy))
+        shifted_padded_data_numpy = self.shift_2d(padded_data_numpy, random_shifts, max_shift=max_shift)
+        # print('Data shape after transformation: ', np.shape(shifted_padded_data_numpy))
         data = torch.from_numpy(shifted_padded_data_numpy)
         # redo normalization
         data = (data - 0.1307) / 0.3081
-        #print('Input data shape: ', data.shape)
+
+        return data
+
+    def transformData_MNIST(self, data, batch_size):
+
+        '''
+        Simialr to original CapsNet paper, this function is used to apply shift upto 2 pixels in each direction with zero padding
+        '''
+
+        # undo normalization
+        data = data * 0.3081 + 0.1307
+        # transformations for shifted MNIST
+        shift, max_shift = 2, 2
+        # print(data.shape)
+        data_numpy = data.cpu().detach().numpy()
+        random_shifts = np.random.randint(-shift, shift + 1, (batch_size, 2))
+        shifted_data_numpy = self.shift_2d(data_numpy, random_shifts, max_shift=max_shift)
+        #print('Data shape after transformation: ', np.shape(shifted_data_numpy))
+        data = torch.from_numpy(shifted_data_numpy)
+        # redo normalization
+        data = (data - 0.1307) / 0.3081
 
         return data
 
 
-    def evaluate(self, network, epoch, batch_size,writer,rank=None, isShiftedMNIST=False):
+    def evaluate(self, network, epoch, batch_size, writer=None, rank=None, isShiftedMNIST=False):
 
         if rank:
             dev = rank
         elif torch.cuda.is_available():
-            print("GPU available")
             dev = torch.device("cuda")
+            if rank == 0:
+                print("GPU available")
         else:
             dev = torch.device("cpu")
 
@@ -239,7 +260,7 @@ class Helper():
             for batch_idx, (data, target) in enumerate(train_loader):
 
                 if isShiftedMNIST == True:
-                    data = self.transformData(data, batch_size)
+                    data = self.transformData_ShiftedMNIST(data, batch_size)
 
                 data = data.to(dev)
                 target = target.to(dev)
@@ -251,13 +272,17 @@ class Helper():
 
                 train_running_loss += batch_loss.item()
 
-                # Logging reconstructed images
-                #grid = tvutils.make_grid(reconstructions)
-                #writer.add_image('train_images', grid, (epoch+1))
+                if rank == 0:
+                    # Logging reconstructed images, only 1 image from the batch to save memory
+                    grid = tvutils.make_grid(reconstructions[1, :, :, :])
+                    writer.add_image('train_recons_images', grid, (epoch+1))
+
+                    grid = tvutils.make_grid(data[1, :, :, :] * 0.3081 + 0.1307)
+                    writer.add_image('train_images', grid, (epoch + 1))
 
         train_loss = train_running_loss / train_loader.dataset.data.size(0)
-
         train_accuracy = float(count) / train_loader.dataset.data.size(0)
+
 
         # Compute accuracy on test set
         count = 0
@@ -267,7 +292,7 @@ class Helper():
             for batch_idx, (data, target) in enumerate(test_loader):
 
                 if isShiftedMNIST == True:
-                    data = self.transformData(data, batch_size)
+                    data = self.transformData_ShiftedMNIST(data, batch_size)
 
                 data = data.to(dev)
                 target = target.to(dev)
@@ -276,17 +301,15 @@ class Helper():
                 count += torch.sum(preds == target).detach().item()
 
                 batch_loss = self.cost(caps, target, reconstructions, data, True)
-                #print('Test Batch Loss:', batch_loss.item()/ data.size(0) )
                 test_running_loss += batch_loss.item()
 
-                #grid = tvutils.make_grid(reconstructions)
-                #writer.add_image('test_images', grid, (epoch+1))
+                if rank == 0:
+                    # Logging reconstructed images, only 1 image from the batch to save memory
+                    grid = tvutils.make_grid(reconstructions[1,:,:,:])
+                    writer.add_image('test_recons_images', grid, (epoch+1))
 
         test_loss = test_running_loss / test_loader.dataset.data.size(0)
-
         test_accuracy = float(count) / test_loader.dataset.data.size(0)
-        print('Test Accuracy:', test_accuracy)
-        print('Test Loss:', test_loss)
 
         return train_accuracy, test_accuracy, train_loss, test_loss
         

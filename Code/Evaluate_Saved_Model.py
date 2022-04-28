@@ -11,7 +11,8 @@ import re
 import sys
 
 import torch.utils.data
-from Modules import DatasetHelper, Helper
+from Modules import DatasetHelper
+from Modules import Helper
 from Caps_Net_ShiftedMNIST_DP import ShiftedMNISTCapsuleNetworkModel
 from Caps_Net_MNIST_DP import MNISTCapsuleNetworkModel
 from CNN_MNIST_DP import MnistCNN
@@ -98,7 +99,7 @@ if __name__ == '__main__':
     batch_size = int(sys.argv[1])
     model_arch = int(sys.argv[2])
 
-    isResized = True
+    isResized = False
 
     if model_arch == 1:
         # Caps Net MNIST model
@@ -154,6 +155,9 @@ if __name__ == '__main__':
     elif model_arch == 4:
         # CNN Shifted MNIST model
         loaded_network = ShiftedMnistCNN()
+
+    helper = Helper()
+    print(helper.count_parameters(loaded_network))
 
     loaded_network.load_state_dict(model_dict)
 

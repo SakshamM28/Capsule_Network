@@ -63,7 +63,7 @@ def getDataset(isResized=False):
     data_path = os.path.join(data_dir, file_name)
     
     data = sio.loadmat(data_path)
-    print(data)
+    #print(data)
 
     images = np.stack(data['affNISTdata']['image'].ravel()).transpose().reshape(-1,40,40,1)
     print("Images shape",images.shape)
@@ -85,7 +85,6 @@ def getDataset(isResized=False):
     #  Labels as actual int 0-9
     labels = data['affNISTdata']['label_int']
     labels = np.stack(labels.ravel()).transpose().reshape(-1)
-    labels.shape
     print("Labels shape",labels.shape)
     
     resized_images = np.array(images_reized_l)
