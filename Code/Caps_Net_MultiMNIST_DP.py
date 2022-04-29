@@ -20,10 +20,10 @@ from torch.utils.tensorboard import SummaryWriter
 from Modules import Squash, Routing, Helper, DataParallel, DatasetHelper
 from MultiMNIST_Dataloader import MultiMNIST_Dataloader
 
-class ShiftedMNISTCapsuleNetworkModel(nn.Module):
+class MultiMNISTCapsuleNetworkModel(nn.Module):
     #TODO take dynamic parameters for routing, input size etc
     def __init__(self):
-        super(ShiftedMNISTCapsuleNetworkModel, self).__init__()
+        super(MultiMNISTCapsuleNetworkModel, self).__init__()
         
         
         self.conv1 = nn.Conv2d(in_channels=1, out_channels=256, kernel_size=9, stride=1)
@@ -95,7 +95,7 @@ def main(rank, world_size, batch_size, num_epochs, learning_rate, model_path, nu
         print('Test dataset size: ', len(test_loader.dataset))
 
     # Set up the network and optimizer
-    network = ShiftedMNISTCapsuleNetworkModel()
+    network = MultiMNISTCapsuleNetworkModel()
     network.to(rank)
     network= DDP(network, device_ids=[rank], output_device=rank, find_unused_parameters=True)
 
