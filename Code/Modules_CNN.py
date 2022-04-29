@@ -173,7 +173,7 @@ class Helper():
                     pred = torch.topk(preds, k=2)[1]
                     pred_1 = torch.squeeze(pred.narrow(1, 0, 1))
                     pred_2 = torch.squeeze(pred.narrow(1, 1, 1))
-                    print('New pred: ', pred, pred.shape, pred_1, pred_1.shape, pred_2, pred_2.shape)
+                    #print('New pred: ', pred, pred.shape, pred_1, pred_1.shape, pred_2, pred_2.shape)
                     count += torch.sum(torch.logical_and(pred_1 == base_label, pred_2 == top_label)).detach().item()
 
                     batch_loss_1 = self.cost(preds, base_label)
