@@ -46,6 +46,8 @@ def evaluate(network, test_loader, batch_size, model_arch, writer, test_data, is
             print('Test image: ', data.size())
             print('Test label: ', target.size())
 
+            data = data.float()
+
             data = data.to(dev)
             target = target.to(dev)
 
