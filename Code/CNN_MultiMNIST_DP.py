@@ -20,12 +20,12 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.tensorboard import SummaryWriter
 
 from Modules_CNN import Helper, DataParallel, DatasetHelper
+from MultiMNIST_Dataloader import MultiMNIST_Dataloader
 
-
-class MnistCNN(nn.Module):
+class MultiMnistCNN(nn.Module):
 
     def __init__(self):
-        super(MnistCNN, self).__init__()
+        super(MultiMnistCNN, self).__init__()
 
         # Define the architecture
         self.model = nn.Sequential()
@@ -72,17 +72,17 @@ def main(rank, world_size, batch_size, num_epochs, learning_rate, model_path, nu
     # setup the process groups
     dataParallel.setup(rank, world_size)
     # Set up the data loader
-    train_loader = dataParallel.prepare(True, rank, world_size, batch_size)
+    train_loader = dataParallel.prepare(True, rank, world_size, batch_size, num_workers=4, is_MultiMNIST=True)
 
     ## Load Full Test data for evaluation
-    test_loader = torch.utils.data.DataLoader(DatasetHelper.getDataSet(False), batch_size=batch_size)
+    test_loader = torch.utils.data.DataLoader(MultiMNIST_Dataloader(is_train=False), batch_size=batch_size)
 
     if rank == 0:
         print('Training dataset size: ', train_loader.dataset.data.size(0))
         print('Test dataset size: ', test_loader.dataset.data.size(0))
 
     # Set up the network and optimizer
-    network = MnistCNN()
+    network = MultiMnistCNN()
     network.to(rank)
     network= DDP(network, device_ids=[rank], output_device=rank, find_unused_parameters=True)
 
