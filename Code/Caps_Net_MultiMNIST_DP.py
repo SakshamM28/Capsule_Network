@@ -86,8 +86,8 @@ def main(rank, world_size, batch_size, num_epochs, learning_rate, model_path, nu
     test_loader = torch.utils.data.DataLoader(MultiMNIST_Dataloader(is_train=False), batch_size=batch_size)
 
     if rank == 0:
-        print('Training dataset size: ', train_loader.dataset.data.size(0))
-        print('Test dataset size: ', test_loader.dataset.data.size(0))
+        print('Training dataset size: ', len(train_loader.dataset))
+        print('Test dataset size: ', len(test_loader.dataset))
 
     # Set up the network and optimizer
     network = ShiftedMNISTCapsuleNetworkModel()
