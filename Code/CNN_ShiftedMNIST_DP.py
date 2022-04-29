@@ -151,11 +151,12 @@ def main(rank, world_size, batch_size, num_epochs, learning_rate, model_path, nu
             train_acc_l.append(train_accuracy)
             test_acc_l.append(test_accuracy)
 
+        if rank == 0:
             if test_accuracy == max(test_acc_l):
                 best_epoch = epoch + 1
 
-            # Saving the model with best test accuracy till current epoch
-            torch.save(network.state_dict(), model_path + "cnn_shifted_mnist_" + str(num_epochs) + "_" + str(epoch+1) + ".pt")
+                # Saving the model with best test accuracy till current epoch
+                torch.save(network.state_dict(), model_path + 'cnn_multimnist_' + str(num_epochs) + '_' + str(epoch+1) + '.pt')
 
     if rank == 0:
         writer.flush()

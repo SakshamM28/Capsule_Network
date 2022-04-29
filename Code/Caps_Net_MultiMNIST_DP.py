@@ -211,7 +211,7 @@ if __name__ == '__main__':
     world_size = 2
     mp.spawn(
         main,
-        args=(world_size, batch_size,num_epochs,learning_rate, model_path, num_exp),
+        args=(world_size, batch_size, num_epochs, learning_rate, model_path, num_exp),
         nprocs=world_size
     )
     

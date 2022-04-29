@@ -30,13 +30,11 @@ class MultiMnistCNN(nn.Module):
         # Define the architecture
         self.model = nn.Sequential()
 
-        self.model.add_module('conv1',
-                              nn.Conv2d(in_channels=1, out_channels=512, kernel_size=9, stride=1))  # (28, 28, 512)
+        self.model.add_module('conv1', nn.Conv2d(in_channels=1, out_channels=512, kernel_size=9, stride=1))  # (28, 28, 512)
         self.model.add_module('pool1', nn.MaxPool2d(kernel_size=2, stride=2))  # (14, 14, 512)
         self.model.add_module('activation1', nn.ReLU())
 
-        self.model.add_module('conv2',
-                              nn.Conv2d(in_channels=512, out_channels=256, kernel_size=5, stride=1))  # (10, 10, 256)
+        self.model.add_module('conv2', nn.Conv2d(in_channels=512, out_channels=256, kernel_size=5, stride=1))  # (10, 10, 256)
         self.model.add_module('pool2', nn.MaxPool2d(kernel_size=2, stride=2))  # (5, 5, 256)
         self.model.add_module('activation2', nn.ReLU())
 
@@ -48,17 +46,14 @@ class MultiMnistCNN(nn.Module):
         self.model.add_module('linear2', nn.Linear(in_features=1024, out_features=10))
         self.model.add_module('activation4', nn.LogSoftmax(dim=1))
 
-        # Define the loss
-        self.loss = nn.NLLLoss()
-
     def forward(self, images: torch.Tensor) -> torch.Tensor:
         """
         :param images: (batch_size, height, width) Images to be classified
         :return predictions: (batch_size, 10) Output predictions (log probabilities)
         """
-        return self.model(images) 
+        return self.model(images)
 
-    
+
 def main(rank, world_size, batch_size, num_epochs, learning_rate, model_path, num_exp):
     
     print(rank, world_size, batch_size, num_epochs, learning_rate, model_path, num_exp)
@@ -162,8 +157,8 @@ def main(rank, world_size, batch_size, num_epochs, learning_rate, model_path, nu
             if test_accuracy == max(test_acc_l):
                 best_epoch = epoch + 1
 
-            # Saving the model with best test accuracy till current epoch
-            torch.save(network.state_dict(), model_path + 'cnn_multimnist_' + str(num_epochs) + '_' + str(epoch+1) + '.pt')
+                # Saving the model with best test accuracy till current epoch
+                torch.save(network.state_dict(), model_path + 'cnn_multimnist_' + str(num_epochs) + '_' + str(epoch+1) + '.pt')
 
     if rank == 0:
         writer.flush()

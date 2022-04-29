@@ -232,7 +232,7 @@ class Helper():
                     pred = torch.topk(preds, k=2)[1]
                     pred_1 = torch.squeeze(pred.narrow(1, 0, 1))
                     pred_2 = torch.squeeze(pred.narrow(1, 1, 1))
-                    print('New pred: ', pred, pred.shape, pred_1, pred_1.shape, pred_2, pred_2.shape)
+                    #print('New pred: ', pred, pred.shape, pred_1, pred_1.shape, pred_2, pred_2.shape)
                     count += torch.sum(torch.logical_and(pred_1 == base_label, pred_2 == top_label)).detach().item()
 
                     batch_loss_1 = self.cost(preds, base_label)
@@ -241,8 +241,8 @@ class Helper():
 
                     test_running_loss += batch_loss.item()
 
-            test_loss = test_running_loss / test_loader.dataset.data.size(0)
-            test_accuracy = float(count) / test_loader.dataset.data.size(0)
+            test_loss = test_running_loss / len(test_loader.dataset)
+            test_accuracy = float(count) / len(test_loader.dataset)
         else:
             with torch.no_grad():
                 for batch_idx, (data, target) in enumerate(test_loader):
