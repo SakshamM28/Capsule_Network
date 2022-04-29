@@ -155,11 +155,11 @@ if __name__ == '__main__':
         # Caps_Net_MultiMNIST model
         loaded_network = MultiMNISTCapsuleNetworkModel()
     elif model_arch == 4:
-        # CNN_MNIST model
-        loaded_network = MnistCNN()
-    elif model_arch == 5:
         # CNN_ShiftedMNIST model
         loaded_network = ShiftedMnistCNN()
+    elif model_arch == 5:
+        # CNN_MNIST model
+        loaded_network = MnistCNN()
     elif model_arch == 6:
         # CNN_MultiMNIST model
         loaded_network = MultiMnistCNN()
