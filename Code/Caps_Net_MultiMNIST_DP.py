@@ -54,26 +54,21 @@ class ShiftedMNISTCapsuleNetworkModel(nn.Module):
         
         
         with torch.no_grad():
-            pred = (caps ** 2).sum(-1).argmax(-1)
-            print('Old pred: ',pred, pred.shape)
-            #print((caps ** 2).sum(-1), (caps ** 2).sum(-1).shape)
-            print(torch.topk((caps ** 2).sum(-1), k=2)[1])
             pred = torch.topk((caps ** 2).sum(-1), k=2)[1]
             pred_1 = torch.squeeze(pred.narrow(1, 0, 1))
             pred_2 = torch.squeeze(pred.narrow(1, 1, 1))
-            print('New pred: ', pred_1, pred_2, pred_1.shape, pred_2.shape)
-            #pred_1 = pred[:, :]
-            mask = torch.eye(10, device=data.device)[pred]
-            print('Old mask: ', mask, mask.shape)
+            #print('New pred: ', pred_1, pred_2, pred_1.shape, pred_2.shape)
             mask_1 = torch.eye(10, device=data.device)[pred_1]
             mask_2 = torch.eye(10, device=data.device)[pred_2]
-            print('New mask: ', mask_1, mask_1.shape, mask_2, mask_2.shape)
+            #print('New mask: ', mask_1, mask_1.shape, mask_2, mask_2.shape)
             
-        reconstructions = self.decoder((caps * mask[:, :, None]).view(x.shape[0], -1))
+        reconstructions_1 = self.decoder((caps * mask_1[:, :, None]).view(x.shape[0], -1))
+        reconstructions_2 = self.decoder((caps * mask_2[:, :, None]).view(x.shape[0], -1))
         
-        reconstructions = reconstructions.view(-1, 1, 36, 36)
+        reconstructions_1 = reconstructions_1.view(-1, 1, 36, 36)
+        reconstructions_2 = reconstructions_2.view(-1, 1, 36, 36)
         
-        return caps, reconstructions, pred
+        return caps, reconstructions_1, reconstructions_2, pred_1, pred_2
     
 def main(rank, world_size, batch_size, num_epochs, learning_rate, model_path, num_exp):
     
@@ -129,11 +124,13 @@ def main(rank, world_size, batch_size, num_epochs, learning_rate, model_path, nu
             top_label = top_label.to(rank)
 
             # Get the predictions
-            caps, reconstructions, preds = network.forward(merged)
+            caps, reconstructions_1, reconstructions_2, preds_1, preds_2 = network.forward(merged)
             #print(preds.shape)
 
             # Compute the loss
-            loss = helper.cost(caps, target, reconstructions, data, True)
+            loss_1 = helper.cost(caps, base_label, reconstructions_1, base_shifted, True)
+            loss_2 = helper.cost(caps, top_label, reconstructions_2, top_shifted, True)
+            loss = 0.5 * (loss_1 + loss_2)
 
             # Take a gradient step
             optimizer.zero_grad()
