@@ -31,7 +31,7 @@ class ShiftedMNISTCapsuleNetworkModel(nn.Module):
         
         self.squash = Squash()
 
-        self.digit_capsules = Routing(32 * 12 * 12, 10, 8, 16, 3)
+        self.digit_capsules = Routing(32 * 10 * 10, 10, 8, 16, 3)
         
         
         self.decoder = nn.Sequential(
