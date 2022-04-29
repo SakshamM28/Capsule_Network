@@ -292,7 +292,11 @@ class Helper():
 
                         #grid = tvutils.make_grid(data[1, :, :, :] * 0.3081 + 0.1307)
                         grid = tvutils.make_grid(merged[1, :, :, :])
-                        writer.add_image('train_images', grid, (epoch + 1))
+                        writer.add_image('train_merged_image', grid, (epoch + 1))
+                        grid = tvutils.make_grid(base_shifted[1, :, :, :])
+                        writer.add_image('train_base_image', grid, (epoch + 1))
+                        grid = tvutils.make_grid(top_shifted[1, :, :, :])
+                        writer.add_image('train_top_image', grid, (epoch + 1))
 
             train_loss = train_running_loss / len(train_loader.dataset)
             train_accuracy = float(count) / len(train_loader.dataset)

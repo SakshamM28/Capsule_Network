@@ -134,7 +134,7 @@ class MultiMNIST_Dataloader(Dataset):
     def transform(self, merged, base_shifted, top_shifted, base_label, top_label):
         transform = transforms.Compose([
             transforms.ToTensor(),
-            transforms.Normalize((0.1307,), (0.3081,))
+            #transforms.Normalize((0.1307,), (0.3081,))
         ])
         merged, base_shifted, top_shifted = transform(merged), transform(base_shifted), transform(top_shifted)
         base_label = torch.as_tensor(base_label, dtype=torch.int64)
