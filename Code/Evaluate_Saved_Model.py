@@ -65,7 +65,7 @@ def evaluate(network, test_loader, batch_size, model_arch, writer, test_data, is
                 #pred_label = preds[idx]
                 #true_label = target.__getitem__(idx)
 
-                grid = tvutils.make_grid(img * 0.3081 + 0.1307)
+                grid = tvutils.make_grid(img)# * 0.3081 + 0.1307)
                 writer.add_image('wrong_images_' + str(wrong_count), grid, 0)
 
                 if model_arch in [1, 2, 3]:
