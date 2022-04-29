@@ -66,7 +66,7 @@ def getDataset(isResized=False):
     #print(data)
 
     images = np.stack(data['affNISTdata']['image'].ravel()).transpose().reshape(-1,40,40,1)
-    print("Images shape",images.shape)
+    print("Images shape", images.shape)
 
     images_reized_l = []
     for i in range(0, len(images)):
@@ -93,7 +93,7 @@ def getDataset(isResized=False):
     transform=transforms.Compose([
             #transforms.Resize((28,28)),
             transforms.ToTensor(),
-            transforms.Normalize((0.1307,), (0.3081,))
+            #transforms.Normalize((0.1307,), (0.3081,))
             ])
 
     dataset = affNISTData(resized_images, labels, transform)
@@ -110,9 +110,9 @@ if __name__ == '__main__':
     for i in range(1,50):
         image = data.__getitem__(i)[0]
 
-        print(image.size())
+        print(torch.max(image), image.size())
 
-        image = image * 0.3081 + 0.1307
+        #image = image * 0.3081 + 0.1307
         grid = tvutils.make_grid(image)
         writer.add_image('resized_images', grid, i)
 
