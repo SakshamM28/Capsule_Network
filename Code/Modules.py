@@ -275,7 +275,7 @@ class Helper():
                     top_label = top_label.to(rank)
 
                     caps, reconstructions_1, reconstructions_2, preds_1, preds_2 = network.forward(merged)
-                    count += torch.sum(preds_1 == base_label and preds_2 == top_label).detach().item()
+                    count += torch.sum(torch.logical_and(preds_1 == base_label, preds_2 == top_label)).detach().item()
 
                     batch_loss_1 = self.cost(caps, base_label, reconstructions_1, base_shifted, True)
                     batch_loss_2 = self.cost(caps, top_label, reconstructions_2, top_shifted, True)
@@ -294,8 +294,8 @@ class Helper():
                         grid = tvutils.make_grid(merged[1, :, :, :])
                         writer.add_image('train_images', grid, (epoch + 1))
 
-            train_loss = train_running_loss / train_loader.dataset.data.size(0)
-            train_accuracy = float(count) / train_loader.dataset.data.size(0)
+            train_loss = train_running_loss / len(train_loader.dataset)
+            train_accuracy = float(count) / len(train_loader.dataset)
         else:
             with torch.no_grad():
                 for batch_idx, (data, target) in enumerate(train_loader):
@@ -340,7 +340,7 @@ class Helper():
                     top_label = top_label.to(rank)
 
                     caps, reconstructions_1, reconstructions_2, preds_1, preds_2 = network.forward(merged)
-                    count += torch.sum(preds_1 == base_label and preds_2 == top_label).detach().item()
+                    count += torch.sum(torch.logical_and(preds_1 == base_label, preds_2 == top_label)).detach().item()
 
                     batch_loss_1 = self.cost(caps, base_label, reconstructions_1, base_shifted, True)
                     batch_loss_2 = self.cost(caps, top_label, reconstructions_2, top_shifted, True)
@@ -355,8 +355,8 @@ class Helper():
                         grid = tvutils.make_grid(reconstructions_2[1, :, :, :])
                         writer.add_image('test_recons_top_images', grid, (epoch + 1))
 
-            test_loss = test_running_loss / test_loader.dataset.data.size(0)
-            test_accuracy = float(count) / test_loader.dataset.data.size(0)
+            test_loss = test_running_loss / len(test_loader.dataset)
+            test_accuracy = float(count) / len(test_loader.dataset)
         else:
             with torch.no_grad():
                 for batch_idx, (data, target) in enumerate(test_loader):
