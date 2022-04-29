@@ -85,7 +85,7 @@ def main(rank, world_size, batch_size, num_epochs, learning_rate, model_path, nu
     # setup the process groups
     dataParallel.setup(rank, world_size)
     # Set up the data loader
-    train_loader = dataParallel.prepare(True, rank, world_size, batch_size, is_MultiMNIST=True)
+    train_loader = dataParallel.prepare(True, rank, world_size, batch_size, num_workers=4, is_MultiMNIST=True)
 
     ## Load Full Test data for evaluation
     test_loader = torch.utils.data.DataLoader(MultiMNIST_Dataloader(is_train=False), batch_size=batch_size)
@@ -206,7 +206,7 @@ if __name__ == '__main__':
     Path(model_path).mkdir(parents=True, exist_ok=True)
     
     # Put no. of GPU's used
-    world_size = 1
+    world_size = 2
     mp.spawn(
         main,
         args=(world_size, batch_size,num_epochs,learning_rate, model_path, num_exp),
