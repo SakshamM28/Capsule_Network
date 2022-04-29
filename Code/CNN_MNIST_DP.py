@@ -21,7 +21,6 @@ from torch.utils.tensorboard import SummaryWriter
 
 from Modules_CNN import Helper, DataParallel, DatasetHelper
 
-import numpy as np
 
 class MnistCNN(nn.Module):
 
@@ -47,9 +46,6 @@ class MnistCNN(nn.Module):
         self.model.add_module('linear2', nn.Linear(in_features=1024, out_features=10))
         self.model.add_module('activation4', nn.LogSoftmax(dim=1))
 
-        # Define the loss
-        self.loss = nn.NLLLoss()
-
     def forward(self, images: torch.Tensor) -> torch.Tensor:
         """
         :param images: (batch_size, height, width) Images to be classified
@@ -64,8 +60,9 @@ def main(rank, world_size, batch_size, num_epochs, learning_rate, model_path, nu
     
     helper = Helper()
 
-    # Tensorboard
-    writer = SummaryWriter('runs/cnn_mnist_experiment_' + str(num_epochs) + "_" + str(num_exp))
+    if rank == 0:
+        # Tensorboard
+        writer = SummaryWriter('runs/experiment_' + num_exp)
 
     # Data Parallelism for Multiple GPU
     dataParallel = DataParallel()
@@ -76,16 +73,21 @@ def main(rank, world_size, batch_size, num_epochs, learning_rate, model_path, nu
 
     ## Load Full Test data for evaluation
     test_loader = torch.utils.data.DataLoader(DatasetHelper.getDataSet(False), batch_size=batch_size)
-    
-    print("Training dataset size: ", train_loader.dataset.data.size(0))
-    print("Test dataset size: ", test_loader.dataset.data.size(0))
+
+    if rank == 0:
+        print('Training dataset size: ', train_loader.dataset.data.size(0))
+        print('Test dataset size: ', test_loader.dataset.data.size(0))
 
     # Set up the network and optimizer
     network = MnistCNN()
     network.to(rank)
     network= DDP(network, device_ids=[rank], output_device=rank, find_unused_parameters=True)
 
-    print(helper.count_parameters(network))
+    if rank == 0:
+        table, total_params = helper.count_parameters(network)
+        print(table)
+        print('Total trainable parameters: ', total_params)
+
     optimizer = optim.Adam(network.parameters(), lr=learning_rate)
     lr_scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.96)
     
@@ -99,6 +101,8 @@ def main(rank, world_size, batch_size, num_epochs, learning_rate, model_path, nu
 
         network.train()
         for batch_idx, (data, target) in enumerate(train_loader):
+            # apply upto 2 pixel shift in each direction with zero padding
+            data = helper.transformData_MNIST(data, batch_size)
 
             data = data.to(rank)
             target = target.to(rank)
@@ -115,69 +119,80 @@ def main(rank, world_size, batch_size, num_epochs, learning_rate, model_path, nu
             loss.backward()
             optimizer.step()
 
-        # LR decay
-        lr_scheduler.step()
+        # LR decay after every 2 epochs, original paper applies after ~3 epochs
+        if (epoch+1)%2 ==0:
+            lr_scheduler.step()
         
         # Calculate accuracies on whole dataset
-        train_accuracy, test_accuracy, train_loss, test_loss= helper.evaluate(network, epoch, batch_size, writer, rank)
-        
-        print('Epoch:', '{:3d}'.format(epoch + 1),
-              '\tTraining Accuracy:', '{:10.5f}'.format(train_accuracy),
-              '\tTraining Loss:', '{:10.5f}'.format(train_loss),
-              '\tTesting Accuracy:', '{:10.5f}'.format(test_accuracy),
-              '\tTesting Loss:', '{:10.5f}'.format(test_loss))
+        if rank == 0:
+            train_accuracy, test_accuracy, train_loss, test_loss= helper.evaluate(network, epoch, batch_size, writer, rank)
+        #else:
+            #train_accuracy, test_accuracy, train_loss, test_loss = helper.evaluate(network, epoch, batch_size, None, rank)
 
-        # Log LR
-        writer.add_scalar('learning rate', lr_scheduler.get_last_lr()[0], (epoch + 1))
-        # log the training loss
-        writer.add_scalar('training epoch loss', train_loss, (epoch+1))
-        # log the evaluation loss
-        writer.add_scalar('evaluation epoch loss', test_loss, (epoch+1))
-        # log accuracies
-        writer.add_scalar('Training epoch Accuracy', train_accuracy, (epoch+1))
-        writer.add_scalar('Testing epoch Accuracy', test_accuracy, (epoch+1))
-        
-        train_acc_l.append(train_accuracy)
-        test_acc_l.append(test_accuracy)
-        
-        if test_accuracy == max(test_acc_l):
-            best_epoch = epoch + 1
+        if rank == 0:
+            print('Epoch:', '{:3d}'.format(epoch + 1),
+                  '\tTraining Accuracy:', '{:10.5f}'.format(train_accuracy),
+                  '\tTraining Loss:', '{:10.5f}'.format(train_loss),
+                  '\tTesting Accuracy:', '{:10.5f}'.format(test_accuracy),
+                  '\tTesting Loss:', '{:10.5f}'.format(test_loss))
+
+        if rank == 0:
+            # Log LR
+            writer.add_scalar(str(rank)+': learning rate', lr_scheduler.get_last_lr()[0], (epoch + 1))
+            # log the training loss
+            writer.add_scalar(str(rank)+': training epoch loss', train_loss, (epoch+1))
+            # log the evaluation loss
+            writer.add_scalar(str(rank)+': evaluation epoch loss', test_loss, (epoch+1))
+            # log accuracies
+            writer.add_scalar(str(rank)+': Training epoch Accuracy', train_accuracy, (epoch+1))
+            writer.add_scalar(str(rank)+': Testing epoch Accuracy', test_accuracy, (epoch+1))
+
+        if rank == 0:
+            train_acc_l.append(train_accuracy)
+            test_acc_l.append(test_accuracy)
+
+            if test_accuracy == max(test_acc_l):
+                best_epoch = epoch + 1
 
             # Saving the model with best test accuracy till current epoch
             torch.save(network.state_dict(), model_path + "cnn_mnist_" + str(num_epochs) + "_" + str(epoch+1) + ".pt")
 
-
-    writer.flush()
-    writer.close()
+    if rank == 0:
+        writer.flush()
+        writer.close()
 
 
     # Display Max Accuracy
-    print(" Max Train Accuracy : ", max(train_acc_l))
-    print(" Max Test Accuracy : ", max(test_acc_l))
-    print(" Best Test Accuracy epoch: ", best_epoch)
+    if rank == 0:
+        print('Training completed!')
+        print('Max Train Accuracy : ', max(train_acc_l))
+        print('Max Test Accuracy : ', max(test_acc_l))
+        print('Best Test Accuracy epoch: ', best_epoch)
     
     
     dataParallel.cleanup()
-    
+
+
 import torch.multiprocessing as mp
 import os
+from pathlib import Path
+
 if __name__ == '__main__':
     
     # Control variables
     batch_size = int(sys.argv[1])
     num_epochs = int(sys.argv[2])
     learning_rate = 1e-3
-    num_exp = int(sys.argv[3])
-    model_path = "saved_model/cnn_mnist/"
+    num_exp = sys.argv[3]
 
-    if os.path.exists(model_path) == False:
-        os.mkdir(model_path)
+    model_path = 'saved_model/' + num_exp + '/'
+    Path(model_path).mkdir(parents=True, exist_ok=True)
 
     # Put no. of GPU's used
     world_size = 2
     mp.spawn(
         main,
-        args=(world_size, batch_size,num_epochs,learning_rate, model_path, num_exp),
+        args=(world_size, batch_size, num_epochs, learning_rate, model_path, num_exp),
         nprocs=world_size
     )
     
