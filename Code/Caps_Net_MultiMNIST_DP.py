@@ -143,9 +143,9 @@ def main(rank, world_size, batch_size, num_epochs, learning_rate, model_path, nu
         
         # Calculate accuracies on whole dataset
         if rank == 0:
-            train_accuracy, test_accuracy, train_loss, test_loss= helper.evaluate(network, epoch, batch_size, writer, rank, isShiftedMNIST=False)
-        else:
-            train_accuracy, test_accuracy, train_loss, test_loss = helper.evaluate(network, epoch, batch_size, None, rank, isShiftedMNIST=False)
+            train_accuracy, test_accuracy, train_loss, test_loss= helper.evaluate(network, epoch, batch_size, writer, rank, isMultiMNIST=True)
+        #else:
+        #    train_accuracy, test_accuracy, train_loss, test_loss = helper.evaluate(network, epoch, batch_size, None, rank, isMultiMNIST=True)
 
         if rank == 0:
             print('Epoch:', '{:3d}'.format(epoch + 1),

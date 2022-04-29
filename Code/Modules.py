@@ -242,7 +242,7 @@ class Helper():
         return data
 
 
-    def evaluate(self, network, epoch, batch_size, writer=None, rank=None, isShiftedMNIST=False):
+    def evaluate(self, network, epoch, batch_size, writer=None, rank=None, isShiftedMNIST=False, isMultiMNIST=False):
 
         if rank:
             dev = rank
@@ -252,70 +252,134 @@ class Helper():
                 print("GPU available")
         else:
             dev = torch.device("cpu")
-
-        train_loader = torch.utils.data.DataLoader(DatasetHelper.getDataSet(True), batch_size=batch_size)
-        test_loader = torch.utils.data.DataLoader(DatasetHelper.getDataSet(False), batch_size=batch_size)
+        if isMultiMNIST:
+            train_loader = torch.utils.data.DataLoader(MultiMNIST_Dataloader(is_train=False), batch_size=batch_size)
+            test_loader = torch.utils.data.DataLoader(MultiMNIST_Dataloader(is_train=False), batch_size=batch_size)
+        else:
+            train_loader = torch.utils.data.DataLoader(DatasetHelper.getDataSet(True), batch_size=batch_size)
+            test_loader = torch.utils.data.DataLoader(DatasetHelper.getDataSet(False), batch_size=batch_size)
 
         network.to(dev)
         network.eval()
         # Compute accuracy on training set
         count = 0
         train_running_loss = 0.0
-        with torch.no_grad():
-            for batch_idx, (data, target) in enumerate(train_loader):
 
-                if isShiftedMNIST == True:
-                    data = self.transformData_ShiftedMNIST(data, batch_size)
+        if isMultiMNIST:
+            with torch.no_grad():
+                for batch_idx, (merged, base_shifted, top_shifted, base_label, top_label) in enumerate(train_loader):
+                    merged = merged.to(rank)
+                    base_shifted = base_shifted.to(rank)
+                    top_shifted = top_shifted.to(rank)
+                    base_label = base_label.to(rank)
+                    top_label = top_label.to(rank)
 
-                data = data.to(dev)
-                target = target.to(dev)
+                    caps, reconstructions_1, reconstructions_2, preds_1, preds_2 = network.forward(merged)
+                    count += torch.sum(preds_1 == base_label and preds_2 == top_label).detach().item()
 
-                caps, reconstructions, preds = network.forward(data)
-                count += torch.sum(preds == target).detach().item()
+                    batch_loss_1 = self.cost(caps, base_label, reconstructions_1, base_shifted, True)
+                    batch_loss_2 = self.cost(caps, top_label, reconstructions_2, top_shifted, True)
+                    batch_loss = 0.5 * (batch_loss_1 + batch_loss_2)
 
-                batch_loss = self.cost(caps, target, reconstructions, data, True)
+                    train_running_loss += batch_loss.item()
 
-                train_running_loss += batch_loss.item()
+                    if rank == 0:
+                        # Logging reconstructed images, only 1 image from the batch to save memory
+                        grid = tvutils.make_grid(reconstructions_1[1, :, :, :])
+                        writer.add_image('train_recons_base_images', grid, (epoch+1))
+                        grid = tvutils.make_grid(reconstructions_2[1, :, :, :])
+                        writer.add_image('train_recons_top_images', grid, (epoch + 1))
 
-                if rank == 0:
-                    # Logging reconstructed images, only 1 image from the batch to save memory
-                    grid = tvutils.make_grid(reconstructions[1, :, :, :])
-                    writer.add_image('train_recons_images', grid, (epoch+1))
+                        #grid = tvutils.make_grid(data[1, :, :, :] * 0.3081 + 0.1307)
+                        grid = tvutils.make_grid(merged[1, :, :, :])
+                        writer.add_image('train_images', grid, (epoch + 1))
 
-                    #grid = tvutils.make_grid(data[1, :, :, :] * 0.3081 + 0.1307)
-                    grid = tvutils.make_grid(data[1, :, :, :])
-                    writer.add_image('train_images', grid, (epoch + 1))
+            train_loss = train_running_loss / train_loader.dataset.data.size(0)
+            train_accuracy = float(count) / train_loader.dataset.data.size(0)
+        else:
+            with torch.no_grad():
+                for batch_idx, (data, target) in enumerate(train_loader):
 
-        train_loss = train_running_loss / train_loader.dataset.data.size(0)
-        train_accuracy = float(count) / train_loader.dataset.data.size(0)
+                    if isShiftedMNIST == True:
+                        data = self.transformData_ShiftedMNIST(data, batch_size)
+
+                    data = data.to(dev)
+                    target = target.to(dev)
+
+                    caps, reconstructions, preds = network.forward(data)
+                    count += torch.sum(preds == target).detach().item()
+
+                    batch_loss = self.cost(caps, target, reconstructions, data, True)
+
+                    train_running_loss += batch_loss.item()
+
+                    if rank == 0:
+                        # Logging reconstructed images, only 1 image from the batch to save memory
+                        grid = tvutils.make_grid(reconstructions[1, :, :, :])
+                        writer.add_image('train_recons_images', grid, (epoch + 1))
+
+                        # grid = tvutils.make_grid(data[1, :, :, :] * 0.3081 + 0.1307)
+                        grid = tvutils.make_grid(data[1, :, :, :])
+                        writer.add_image('train_images', grid, (epoch + 1))
+
+            train_loss = train_running_loss / train_loader.dataset.data.size(0)
+            train_accuracy = float(count) / train_loader.dataset.data.size(0)
 
 
         # Compute accuracy on test set
         count = 0
         test_running_loss = 0.0
 
-        with torch.no_grad():
-            for batch_idx, (data, target) in enumerate(test_loader):
+        if isMultiMNIST:
+            with torch.no_grad():
+                for batch_idx, (merged, base_shifted, top_shifted, base_label, top_label) in enumerate(test_loader):
+                    merged = merged.to(rank)
+                    base_shifted = base_shifted.to(rank)
+                    top_shifted = top_shifted.to(rank)
+                    base_label = base_label.to(rank)
+                    top_label = top_label.to(rank)
 
-                if isShiftedMNIST == True:
-                    data = self.transformData_ShiftedMNIST(data, batch_size)
+                    caps, reconstructions_1, reconstructions_2, preds_1, preds_2 = network.forward(merged)
+                    count += torch.sum(preds_1 == base_label and preds_2 == top_label).detach().item()
 
-                data = data.to(dev)
-                target = target.to(dev)
+                    batch_loss_1 = self.cost(caps, base_label, reconstructions_1, base_shifted, True)
+                    batch_loss_2 = self.cost(caps, top_label, reconstructions_2, top_shifted, True)
+                    batch_loss = 0.5 * (batch_loss_1 + batch_loss_2)
 
-                caps, reconstructions, preds = network.forward(data)
-                count += torch.sum(preds == target).detach().item()
+                    test_running_loss += batch_loss.item()
 
-                batch_loss = self.cost(caps, target, reconstructions, data, True)
-                test_running_loss += batch_loss.item()
+                    if rank == 0:
+                        # Logging reconstructed images, only 1 image from the batch to save memory
+                        grid = tvutils.make_grid(reconstructions_1[1, :, :, :])
+                        writer.add_image('test_recons_base_images', grid, (epoch + 1))
+                        grid = tvutils.make_grid(reconstructions_2[1, :, :, :])
+                        writer.add_image('test_recons_top_images', grid, (epoch + 1))
 
-                if rank == 0:
-                    # Logging reconstructed images, only 1 image from the batch to save memory
-                    grid = tvutils.make_grid(reconstructions[1,:,:,:])
-                    writer.add_image('test_recons_images', grid, (epoch+1))
+            test_loss = test_running_loss / test_loader.dataset.data.size(0)
+            test_accuracy = float(count) / test_loader.dataset.data.size(0)
+        else:
+            with torch.no_grad():
+                for batch_idx, (data, target) in enumerate(test_loader):
 
-        test_loss = test_running_loss / test_loader.dataset.data.size(0)
-        test_accuracy = float(count) / test_loader.dataset.data.size(0)
+                    if isShiftedMNIST == True:
+                        data = self.transformData_ShiftedMNIST(data, batch_size)
+
+                    data = data.to(dev)
+                    target = target.to(dev)
+
+                    caps, reconstructions, preds = network.forward(data)
+                    count += torch.sum(preds == target).detach().item()
+
+                    batch_loss = self.cost(caps, target, reconstructions, data, True)
+                    test_running_loss += batch_loss.item()
+
+                    if rank == 0:
+                        # Logging reconstructed images, only 1 image from the batch to save memory
+                        grid = tvutils.make_grid(reconstructions[1, :, :, :])
+                        writer.add_image('test_recons_images', grid, (epoch + 1))
+
+            test_loss = test_running_loss / test_loader.dataset.data.size(0)
+            test_accuracy = float(count) / test_loader.dataset.data.size(0)
+
 
         return train_accuracy, test_accuracy, train_loss, test_loss
-        
