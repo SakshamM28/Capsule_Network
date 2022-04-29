@@ -115,7 +115,7 @@ if __name__ == '__main__':
         isResized = False
     elif model_arch == 5:
         # CNN_MNIST
-        model_path = 'saved_model/best_models/cnn_shifted_mnist/cnn_shifted_mnist_100_82.pt'
+        model_path = 'saved_model/mnist_cnn_128_500/cnn_multimnist_500_136.pt' #latest
     elif model_arch == 6:
         # CNN_MultiMNIST
         model_path = 'saved_model/best_models/cnn_shifted_mnist/cnn_shifted_mnist_100_82.pt'
