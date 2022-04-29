@@ -229,7 +229,7 @@ class Helper():
                     top_label = top_label.to(rank)
 
                     preds = network.forward(merged)
-                    pred = torch.topk(preds, dim=1)
+                    pred = torch.topk(preds, k=2)[1]
                     pred_1 = torch.squeeze(pred.narrow(1, 0, 1))
                     pred_2 = torch.squeeze(pred.narrow(1, 1, 1))
                     print('New pred: ', pred, pred.shape, pred_1, pred_1.shape, pred_2, pred_2.shape)
