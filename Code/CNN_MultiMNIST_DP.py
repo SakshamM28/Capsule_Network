@@ -78,8 +78,8 @@ def main(rank, world_size, batch_size, num_epochs, learning_rate, model_path, nu
     test_loader = torch.utils.data.DataLoader(MultiMNIST_Dataloader(is_train=False), batch_size=batch_size)
 
     if rank == 0:
-        print('Training dataset size: ', train_loader.dataset.data.size(0))
-        print('Test dataset size: ', test_loader.dataset.data.size(0))
+        print('Training dataset size: ', len(train_loader.dataset))
+        print('Test dataset size: ', len(test_loader.dataset))
 
     # Set up the network and optimizer
     network = MultiMnistCNN()
@@ -156,11 +156,12 @@ def main(rank, world_size, batch_size, num_epochs, learning_rate, model_path, nu
             train_acc_l.append(train_accuracy)
             test_acc_l.append(test_accuracy)
 
+        if rank == 0:
             if test_accuracy == max(test_acc_l):
                 best_epoch = epoch + 1
 
             # Saving the model with best test accuracy till current epoch
-            torch.save(network.state_dict(), model_path + "cnn_multimnist_" + str(num_epochs) + "_" + str(epoch+1) + ".pt")
+            torch.save(network.state_dict(), model_path + 'cnn_multimnist_' + str(num_epochs) + '_' + str(epoch+1) + '.pt')
 
     if rank == 0:
         writer.flush()

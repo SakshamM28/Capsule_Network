@@ -145,7 +145,7 @@ def main(rank, world_size, batch_size, num_epochs, learning_rate, model_path, nu
         if rank == 0:
             train_accuracy, test_accuracy, train_loss, test_loss= helper.evaluate(network, epoch, batch_size, writer, rank, isMultiMNIST=True)
         #else:
-        #    train_accuracy, test_accuracy, train_loss, test_loss = helper.evaluate(network, epoch, batch_size, None, rank, isMultiMNIST=True)
+            #train_accuracy, test_accuracy, train_loss, test_loss = helper.evaluate(network, epoch, batch_size, None, rank, isMultiMNIST=True)
 
         if rank == 0:
             print('Epoch:', '{:3d}'.format(epoch + 1),
@@ -206,7 +206,7 @@ if __name__ == '__main__':
 
     model_path = 'saved_model/' + num_exp + '/'
     Path(model_path).mkdir(parents=True, exist_ok=True)
-    
+
     # Put no. of GPU's used
     world_size = 2
     mp.spawn(
