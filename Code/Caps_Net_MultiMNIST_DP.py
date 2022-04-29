@@ -199,7 +199,7 @@ if __name__ == '__main__':
     Path(model_path).mkdir(parents=True, exist_ok=True)
     
     # Put no. of GPU's used
-    world_size = 2
+    world_size = 1
     mp.spawn(
         main,
         args=(world_size, batch_size,num_epochs,learning_rate, model_path, num_exp),
