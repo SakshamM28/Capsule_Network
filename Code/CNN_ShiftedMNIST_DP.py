@@ -49,9 +49,6 @@ class ShiftedMnistCNN(nn.Module):
         self.model.add_module('linear2', nn.Linear(in_features=1600, out_features=10))
         self.model.add_module('activation4', nn.LogSoftmax(dim=1))
 
-        # Define the loss
-        self.loss = nn.NLLLoss()
-
     def forward(self, images: torch.Tensor) -> torch.Tensor:
         """
         :param images: (batch_size, height, width) Images to be classified
@@ -131,9 +128,9 @@ def main(rank, world_size, batch_size, num_epochs, learning_rate, model_path, nu
         
         # Calculate accuracies on whole dataset
         if rank == 0:
-            train_accuracy, test_accuracy, train_loss, test_loss= helper.evaluate(network, epoch, batch_size, writer, rank)
+            train_accuracy, test_accuracy, train_loss, test_loss= helper.evaluate(network, epoch, batch_size, writer, rank, isShiftedMNIST=True)
         #else:
-            #train_accuracy, test_accuracy, train_loss, test_loss = helper.evaluate(network, epoch, batch_size, None, rank)
+            #train_accuracy, test_accuracy, train_loss, test_loss = helper.evaluate(network, epoch, batch_size, None, rank, isShiftedMNIST=True)
 
         if rank == 0:
             print('Epoch:', '{:3d}'.format(epoch + 1),
@@ -198,7 +195,7 @@ if __name__ == '__main__':
     world_size = 2
     mp.spawn(
         main,
-        args=(world_size, batch_size,num_epochs,learning_rate, model_path, num_exp),
+        args=(world_size, batch_size, num_epochs, learning_rate, model_path, num_exp),
         nprocs=world_size
     )
     

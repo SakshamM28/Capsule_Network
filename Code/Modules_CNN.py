@@ -22,7 +22,7 @@ class DataParallel():
 
     def setup(self, rank, world_size):
         os.environ['MASTER_ADDR'] = 'localhost'
-        os.environ['MASTER_PORT'] = '12355'
+        os.environ['MASTER_PORT'] = '12389'
         dist.init_process_group(backend="nccl", rank=rank, world_size=world_size)
 
     def prepare(self, isTrain, rank, world_size, batch_size=128, pin_memory=False, num_workers=0, is_MultiMNIST=False):
@@ -181,6 +181,15 @@ class Helper():
                     batch_loss = 0.5 * (batch_loss_1 + batch_loss_2)
 
                     train_running_loss += batch_loss.item()
+
+                    if rank == 0:
+                        # grid = tvutils.make_grid(data[1, :, :, :] * 0.3081 + 0.1307)
+                        grid = tvutils.make_grid(merged[1, :, :, :])
+                        writer.add_image('train_merged_image', grid, (epoch + 1))
+                        grid = tvutils.make_grid(base_shifted[1, :, :, :])
+                        writer.add_image('train_base_image', grid, (epoch + 1))
+                        grid = tvutils.make_grid(top_shifted[1, :, :, :])
+                        writer.add_image('train_top_image', grid, (epoch + 1))
 
             train_loss = train_running_loss / len(train_loader.dataset)
             train_accuracy = float(count) / len(train_loader.dataset)
