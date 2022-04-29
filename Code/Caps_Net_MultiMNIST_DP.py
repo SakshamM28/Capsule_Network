@@ -59,11 +59,15 @@ class ShiftedMNISTCapsuleNetworkModel(nn.Module):
             #print((caps ** 2).sum(-1), (caps ** 2).sum(-1).shape)
             print(torch.topk((caps ** 2).sum(-1), k=2)[1])
             pred = torch.topk((caps ** 2).sum(-1), k=2)[1]
-            pred_1 = pred[:][0]
-            pred_2 = pred[:][1]
+            pred_1 = pred.narrow(1, 0, pred.shape[0])
+            pred_2 = pred.narrow(2, 0, pred.shape[0])
             print('New pred: ', pred_1, pred_2, pred_1.shape, pred_2.shape)
             #pred_1 = pred[:, :]
             mask = torch.eye(10, device=data.device)[pred]
+            print('Old mask: ', mask, mask.shape)
+            mask_1 = torch.eye(10, device=data.device)[pred_1]
+            mask_2 = torch.eye(10, device=data.device)[pred_2]
+            print('New mask: ', mask_1, mask_1.shape, mask_2, mask_2.shape)
             
         reconstructions = self.decoder((caps * mask[:, :, None]).view(x.shape[0], -1))
         
