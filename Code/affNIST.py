@@ -93,7 +93,7 @@ def getDataset(isResized=False):
     transform=transforms.Compose([
             #transforms.Resize((28,28)),
             transforms.ToTensor(),
-            transforms.Normalize((0.1307,), (0.3081,)) # enable for CNN (by mistake trained CNN with this!)
+            #transforms.Normalize((0.1307,), (0.3081,)) # enable for CNN (by mistake trained CNN with this!)
             ])
 
     dataset = affNISTData(resized_images, labels, transform)
