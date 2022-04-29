@@ -22,7 +22,7 @@ class DataParallel():
 
     def setup(self, rank, world_size):
         os.environ['MASTER_ADDR'] = 'localhost'
-        os.environ['MASTER_PORT'] = '12389'
+        os.environ['MASTER_PORT'] = '12391'
         dist.init_process_group(backend="nccl", rank=rank, world_size=world_size)
 
     def prepare(self, isTrain, rank, world_size, batch_size=128, pin_memory=False, num_workers=0, is_MultiMNIST=False):

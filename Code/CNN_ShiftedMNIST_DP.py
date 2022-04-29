@@ -30,17 +30,17 @@ class ShiftedMnistCNN(nn.Module):
         # Define the architecture
         self.model = nn.Sequential()
 
-        self.model.add_module('conv1', nn.Conv2d(in_channels=1, out_channels=512, kernel_size=9, stride=1))  # (28, 28, 512)
-        self.model.add_module('pool1', nn.MaxPool2d(kernel_size=2, stride=2))  # (14, 14, 512)
+        self.model.add_module('conv1', nn.Conv2d(in_channels=1, out_channels=512, kernel_size=9, stride=1))  # (32, 32, 512)
+        self.model.add_module('pool1', nn.MaxPool2d(kernel_size=2, stride=2))  # (16, 16, 512)
         self.model.add_module('activation1', nn.ReLU())
 
-        self.model.add_module('conv2', nn.Conv2d(in_channels=512, out_channels=256, kernel_size=5, stride=1))  # (10, 10, 256)
-        self.model.add_module('pool2', nn.MaxPool2d(kernel_size=2, stride=2))  # (5, 5, 256)
+        self.model.add_module('conv2', nn.Conv2d(in_channels=512, out_channels=256, kernel_size=5, stride=1))  # (12, 12, 256)
+        self.model.add_module('pool2', nn.MaxPool2d(kernel_size=2, stride=2))  # (6, 6, 256)
         self.model.add_module('activation2', nn.ReLU())
 
         self.model.add_module('flatten', nn.Flatten())
 
-        self.model.add_module('linear1', nn.Linear(in_features=6400, out_features=1024))
+        self.model.add_module('linear1', nn.Linear(in_features=9216, out_features=1024))
         self.model.add_module('activation3', nn.ReLU())
 
         self.model.add_module('linear2', nn.Linear(in_features=1024, out_features=10))
