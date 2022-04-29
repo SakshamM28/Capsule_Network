@@ -62,6 +62,8 @@ def evaluate(network, test_loader, batch_size, model_arch, writer, test_data, is
             for idx in wrong_idx.cpu().detach().numpy().reshape(-1):
                 print('Wrong index:', idx)
                 img = data.__getitem__(idx)
+                #pred_label = preds[idx]
+                #true_label = target.__getitem__(idx)
 
                 grid = tvutils.make_grid(img)
                 writer.add_image('wrong_images_' + str(wrong_count), grid, 0)
