@@ -41,7 +41,7 @@ class affNISTData(torch.utils.data.Dataset):
         return img_norm, label
 
 
-def getDataset(isResized=False):
+def getDataset(isResized=False, isNorm=False):
 
     # Test data URL
     test_URL = "https://www.cs.toronto.edu/~tijmen/affNIST/32x/transformed/test.mat.zip"
@@ -66,7 +66,7 @@ def getDataset(isResized=False):
     #print(data)
 
     images = np.stack(data['affNISTdata']['image'].ravel()).transpose().reshape(-1,40,40,1)
-    print("Images shape", images.shape)
+    #print("Images shape", images.shape)
 
     images_reized_l = []
     for i in range(0, len(images)):
@@ -78,23 +78,30 @@ def getDataset(isResized=False):
 
         images_reized_l.append(image_resized)
 
-    print(len(images_reized_l))
+    #print(len(images_reized_l))
     
-    print(np.array(images_reized_l).shape)
+    #print(np.array(images_reized_l).shape)
     
     #  Labels as actual int 0-9
     labels = data['affNISTdata']['label_int']
     labels = np.stack(labels.ravel()).transpose().reshape(-1)
-    print("Labels shape",labels.shape)
+    #print("Labels shape",labels.shape)
     
     resized_images = np.array(images_reized_l)
 
     # TODO: Check if Resize function can be used, nedd PIL image
-    transform=transforms.Compose([
-            #transforms.Resize((28,28)),
-            transforms.ToTensor(),
-            #transforms.Normalize((0.1307,), (0.3081,)) # enable for CNN (by mistake trained CNN with this!)
-            ])
+    if isNorm:
+        transform=transforms.Compose([
+                #transforms.Resize((28,28)),
+                transforms.ToTensor(),
+                transforms.Normalize((0.1307,), (0.3081,)) # enable for CNN (by mistake trained CNN with this!)
+                ])
+    else:
+        transform = transforms.Compose([
+                # transforms.Resize((28,28)),
+                transforms.ToTensor(),
+                #transforms.Normalize((0.1307,), (0.3081,))  # enable for CNN (by mistake trained CNN with this!)
+        ])
 
     dataset = affNISTData(resized_images, labels, transform)
     
