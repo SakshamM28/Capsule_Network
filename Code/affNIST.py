@@ -66,7 +66,6 @@ def getDataset(isResized=False, isNorm=False):
     #print(data)
 
     images = np.stack(data['affNISTdata']['image'].ravel()).transpose().reshape(-1,40,40,1)
-    #print("Images shape", images.shape)
 
     images_reized_l = []
     for i in range(0, len(images)):
